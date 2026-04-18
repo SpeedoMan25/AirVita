@@ -1,117 +1,110 @@
 /* ─────────────────────────────────────────────
-   ScoreGauge — Semi-circle meter
+   Score Card — Hero gauge
    ───────────────────────────────────────────── */
 
-.score-gauge {
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  padding: 1.5rem 1.25rem 1.25rem;
+.score-card {
+  background: #fff;
+  border-radius: var(--r-xl);
+  padding: var(--gap-lg) var(--gap-md);
+  box-shadow: var(--shadow-md);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.75rem;
-  animation: slideUp 0.4s ease;
+  gap: var(--gap-sm);
+  animation: popIn 0.45s ease;
 }
 
-.score-gauge__ring-container {
-  position: relative;
-  width: 260px;
-  height: 145px;
+/* ── Top row ── */
+.score-card__top {
   display: flex;
-  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+}
+
+.score-card__emoji {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.score-card__heading {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+/* ── Gauge arc ── */
+.score-card__gauge {
+  position: relative;
+  width: 240px;
+  height: 130px;
   overflow: hidden;
 }
 
-.score-gauge__svg {
+.score-card__svg {
   width: 100%;
   height: auto;
 }
 
-.score-gauge__track {
+.score-card__track {
   fill: none;
-  stroke: var(--border-subtle);
-  stroke-width: 14;
+  stroke: #eee;
+  stroke-width: 18;
   stroke-linecap: round;
 }
 
-.score-gauge__progress {
+.score-card__fill {
   fill: none;
-  stroke-width: 14;
+  stroke-width: 18;
   stroke-linecap: round;
-  transition: stroke-dashoffset 1s ease-out;
+  transition: stroke-dashoffset 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
-.score-gauge__value-container {
+/* ── Number ── */
+.score-card__number-wrap {
   position: absolute;
+  bottom: 0;
   left: 0;
   right: 0;
-  bottom: 4px;
+  text-align: center;
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  align-items: baseline;
+  justify-content: center;
+  gap: 3px;
 }
 
-.score-gauge__value {
-  font-family: var(--font-mono);
-  font-size: 2.8rem;
-  font-weight: 500;
+.score-card__number {
+  font-size: 3.5rem;
+  font-weight: 800;
   line-height: 1;
+  letter-spacing: -0.04em;
   transition: color 0.5s ease;
 }
 
-.score-gauge__label {
-  font-size: 0.65rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 2px;
+.score-card__of {
+  font-size: 1.1rem;
+  font-weight: 500;
   color: var(--text-muted);
-  margin-top: 4px;
 }
 
-/* Pulse removed */
-.score-gauge__pulse {
-  display: none;
-}
-
-/* Status row */
-.score-gauge__status-row {
+/* ── Bottom ── */
+.score-card__bottom {
+  text-align: center;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  padding-top: 0.5rem;
-  border-top: 1px solid var(--border-subtle);
+  flex-direction: column;
+  gap: 2px;
 }
 
-.score-gauge__status {
-  font-size: 0.8rem;
-  font-weight: 600;
-  padding: 0;
-  border: none;
-  background: none;
+.score-card__word {
+  font-size: 1.05rem;
+  font-weight: 700;
+  transition: color 0.5s ease;
 }
 
-.score-gauge__connection {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
-  color: var(--text-muted);
+.score-card__desc {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
   font-weight: 400;
-}
-
-.score-gauge__dot {
-  width: 6px;
-  height: 6px;
-  border-radius: var(--radius-full);
-}
-
-.score-gauge__dot--connected {
-  background: var(--color-good);
-}
-
-.score-gauge__dot--disconnected {
-  background: var(--color-bad);
 }

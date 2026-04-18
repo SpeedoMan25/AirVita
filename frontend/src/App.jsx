@@ -12,7 +12,6 @@ export default function App() {
   const [error, setError] = useState(null)
   const [lastFetch, setLastFetch] = useState(null)
 
-  // AI analysis state
   const [analysis, setAnalysis] = useState({ summary: '', flags: [] })
   const [analysisLoading, setAnalysisLoading] = useState(false)
   const [analysisError, setAnalysisError] = useState(null)
@@ -45,7 +44,6 @@ export default function App() {
     }
   }, [])
 
-  // Poll the backend every POLL_INTERVAL_MS
   useEffect(() => {
     fetchStatus()
     const interval = setInterval(fetchStatus, POLL_INTERVAL_MS)
@@ -58,26 +56,41 @@ export default function App() {
 
   return (
     <div className="app">
-      {/* Header — left aligned, compact */}
+      {/* ── Header ── */}
       <header className="app__header">
-        <div className="app__logo">
+        <div className="app__brand">
+          <div className="app__logo-mark">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9z" />
+              <polyline points="9 22 9 12 15 12 15 22" />
+            </svg>
+          </div>
           <h1 className="app__title">RoomPulse</h1>
         </div>
-        <p className="app__subtitle">Environment Monitor</p>
+
+        <div className="app__header-right">
+          <div className="app__status-pill">
+            <span className={`app__status-dot ${connected ? 'app__status-dot--on' : 'app__status-dot--off'}`} />
+            {connected ? 'Live' : 'Offline'}
+          </div>
+          {lastFetch && (
+            <span className="app__last-update">
+              {lastFetch.toLocaleTimeString()}
+            </span>
+          )}
+        </div>
       </header>
 
-      {/* Error banner */}
       {error && (
         <div className="app__error" role="alert" id="error-banner">
           {error}
         </div>
       )}
 
-      {/* Main Dashboard */}
       <main className="app__main">
-        {/* Top row: Score gauge + AI analysis side by side */}
-        <div className="app__top-row">
-          <ScoreGauge score={score} connected={connected} />
+        {/* ── Hero row ── */}
+        <div className="app__hero">
+          <ScoreGauge score={score} />
           <AISummary
             summary={analysis.summary}
             flags={analysis.flags}
@@ -87,24 +100,15 @@ export default function App() {
           />
         </div>
 
-        {/* Sensor readings section */}
-        <div>
-          <div className="app__section-header">
-            <h2 className="app__section-title">Sensors</h2>
-            <span className="app__section-count">7</span>
-          </div>
+        {/* ── Attribute cards ── */}
+        <section>
+          <h2 className="app__section-label">Your Environment</h2>
           <SensorGrid reading={reading} />
-        </div>
+        </section>
       </main>
 
-      {/* Footer */}
       <footer className="app__footer">
-        <span>RoomPulse v1.0</span>
-        {lastFetch && (
-          <span className="app__last-update">
-            Updated {lastFetch.toLocaleTimeString()}
-          </span>
-        )}
+        RoomPulse · HackAugie 2026
       </footer>
     </div>
   )
