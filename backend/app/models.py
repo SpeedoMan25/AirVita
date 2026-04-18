@@ -1,0 +1,27 @@
+"""
+Pydantic models for sensor data and API responses.
+"""
+
+from pydantic import BaseModel, Field
+from typing import Optional
+from datetime import datetime
+
+
+class SensorReading(BaseModel):
+    """Raw sensor payload as received from the Pico."""
+    temperature_c: float = Field(..., description="Temperature in Celsius")
+    humidity_pct: float = Field(..., description="Relative humidity percentage")
+    light_lux: float = Field(..., description="Light level in lux")
+    noise_db: float = Field(..., description="Noise level in decibels")
+    pressure_hpa: float = Field(..., description="Atmospheric pressure in hPa")
+    pm25_ugm3: float = Field(..., description="PM2.5 particulate matter in µg/m³")
+    voc_ppb: float = Field(..., description="Volatile organic compounds in ppb")
+    timestamp_ms: Optional[int] = Field(None, description="Pico tick timestamp")
+
+
+class RoomStatus(BaseModel):
+    """Full API response with sensor data + computed score."""
+    reading: Optional[SensorReading] = None
+    score: int = Field(0, ge=0, le=99, description="Room Health Score (1-99, 0 = no data)")
+    last_updated: Optional[datetime] = None
+    connected: bool = Field(False, description="Whether the serial connection is active")

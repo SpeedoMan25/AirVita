@@ -1,0 +1,43 @@
+# ─────────────────────────────────────────────
+# RoomPulse — Docker Compose
+# ─────────────────────────────────────────────
+# Quick start:
+#   docker-compose up --build
+#
+# USB Serial Access (Linux):
+#   Uncomment the `devices` section under `backend` to pass /dev/ttyACM0.
+#
+# USB Serial Access (Windows):
+#   Docker Desktop on Windows does NOT support USB passthrough.
+#   Option A: Use MOCK_SERIAL=true (default) for development.
+#   Option B: Run the backend natively:
+#       cd backend
+#       set SERIAL_PORT=COM3
+#       uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+# ─────────────────────────────────────────────
+
+services:
+  backend:
+    build: ./backend
+    container_name: roompulse-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - MOCK_SERIAL=true
+      # - SERIAL_PORT=/dev/ttyACM0
+      # - SERIAL_BAUD=115200
+    # ── Linux USB Passthrough (uncomment to use real Pico) ──
+    # devices:
+    #   - "/dev/ttyACM0:/dev/ttyACM0"
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: roompulse-frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    depends_on:
+      - backend
+    restart: unless-stopped
