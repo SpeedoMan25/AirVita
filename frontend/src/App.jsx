@@ -159,6 +159,7 @@ export default function App() {
                 onChange={(e) => selectScenario(e.target.value)}
               >
                 <option value="live">📡 Live (Hardware)</option>
+                <option value="weather">🌍 Weather (Local Outdoor)</option>
                 <optgroup label="Simulations">
                   {scenarios.map(s => (
                     <option key={s.id} value={s.id}>
