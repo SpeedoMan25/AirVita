@@ -22,6 +22,7 @@ All components share a common ground (GND). Logic levels are 3.3V unless otherwi
 | **WS2812 NeoPixel**| DIN | **GP2** | **Pin 4** | 5V signal recommended |
 | **IR Sensor** | OUT | **GP16**| **Pin 21** | Logic 0 = Obstacle |
 | **PIR Sensor** | OUT | **GP17**| **Pin 22** | Logic 1 = Motion |
+| **DHT11 Sensor** | SIG | **GP3** | **Pin 5** | Seeed Studio Grove v1.2 |
 | **Thermistor** | OUT / ADC | **GP26**| **Pin 31** | **Requires 10k Divider** to GND |
 | **Photoresistor** | OUT / ADC | **GP28**| **Pin 34** | **Requires 10k Divider** to GND |
 | **Sensors** | VCC (3.3V) | **3.3V(OUT)**| **Pin 36** | Powers LDR, Therm, and IR |
