@@ -97,6 +97,114 @@ SLEEP_SENSOR_CONFIG: Dict[str, dict] = {
 }
 
 
+# Study-specific scoring configuration
+# Focused on high light levels, low noise, and cool temperatures for alertness
+STUDY_SENSOR_CONFIG: Dict[str, dict] = {
+    "temperature_c": {
+        "ideal_low": 19.0, "ideal_high": 22.0,
+        "abs_min": 15.0,   "abs_max": 28.0,
+        "weight": 0.15,
+    },
+    "humidity_pct": {
+        "ideal_low": 35.0, "ideal_high": 50.0,
+        "abs_min": 10.0,   "abs_max": 80.0,
+        "weight": 0.05,
+    },
+    "light_lux": {
+        "ideal_low": 300.0, "ideal_high": 700.0,
+        "abs_min": 50.0,    "abs_max": 2000.0,
+        "weight": 0.35,
+    },
+    "noise_db": {
+        "ideal_low": 20.0, "ideal_high": 45.0,
+        "abs_min": 10.0,   "abs_max": 75.0,
+        "weight": 0.25,
+    },
+    "pm25_ugm3": {
+        "ideal_low": 0.0,  "ideal_high": 12.0,
+        "abs_min": 0.0,    "abs_max": 50.0,
+        "weight": 0.10,
+    },
+    "voc_ppb": {
+        "ideal_low": 0.0,  "ideal_high": 200.0,
+        "abs_min": 0.0,    "abs_max": 1000.0,
+        "weight": 0.10,
+    },
+}
+
+
+# Work-specific scoring configuration
+# Focused on moderate light levels and tolerance for typical office noise
+WORK_SENSOR_CONFIG: Dict[str, dict] = {
+    "temperature_c": {
+        "ideal_low": 20.0, "ideal_high": 23.0,
+        "abs_min": 15.0,   "abs_max": 30.0,
+        "weight": 0.15,
+    },
+    "humidity_pct": {
+        "ideal_low": 35.0, "ideal_high": 55.0,
+        "abs_min": 10.0,   "abs_max": 85.0,
+        "weight": 0.05,
+    },
+    "light_lux": {
+        "ideal_low": 250.0, "ideal_high": 600.0,
+        "abs_min": 100.0,   "abs_max": 1500.0,
+        "weight": 0.25,
+    },
+    "noise_db": {
+        "ideal_low": 20.0, "ideal_high": 55.0,
+        "abs_min": 10.0,   "abs_max": 85.0,
+        "weight": 0.25,
+    },
+    "pm25_ugm3": {
+        "ideal_low": 0.0,  "ideal_high": 15.0,
+        "abs_min": 0.0,    "abs_max": 60.0,
+        "weight": 0.15,
+    },
+    "voc_ppb": {
+        "ideal_low": 0.0,  "ideal_high": 300.0,
+        "abs_min": 0.0,    "abs_max": 1200.0,
+        "weight": 0.15,
+    },
+}
+
+
+# Fun/Social-specific scoring configuration
+# Focused on dimmer light, higher temperature tolerance, and high noise tolerance
+FUN_SENSOR_CONFIG: Dict[str, dict] = {
+    "temperature_c": {
+        "ideal_low": 21.0, "ideal_high": 25.0,
+        "abs_min": 15.0,   "abs_max": 32.0,
+        "weight": 0.10,
+    },
+    "humidity_pct": {
+        "ideal_low": 30.0, "ideal_high": 60.0,
+        "abs_min": 10.0,   "abs_max": 90.0,
+        "weight": 0.10,
+    },
+    "light_lux": {
+        "ideal_low": 50.0,  "ideal_high": 250.0,
+        "abs_min": 0.0,     "abs_max": 1000.0,
+        "weight": 0.20,
+    },
+    "noise_db": {
+        "ideal_low": 40.0, "ideal_high": 80.0,
+        "abs_min": 20.0,   "abs_max": 100.0,
+        "weight": 0.30,
+    },
+    "pm25_ugm3": {
+        "ideal_low": 0.0,  "ideal_high": 25.0,
+        "abs_min": 0.0,    "abs_max": 100.0,
+        "weight": 0.15,
+    },
+    "voc_ppb": {
+        "ideal_low": 0.0,  "ideal_high": 400.0,
+        "abs_min": 0.0,    "abs_max": 1500.0,
+        "weight": 0.15,
+    },
+}
+
+
 def _sub_score(value: float, ideal_low: float, ideal_high: float,
                abs_min: float, abs_max: float) -> float:
     """
@@ -128,17 +236,42 @@ def calculate_room_health_score(readings: dict) -> int:
     return _calculate_weighted_score(readings, SENSOR_CONFIG)
 
 
-def calculate_sleep_score(readings: dict) -> int:
+def calculate_sleep_score_with_breakdown(readings: dict) -> Dict:
     """
-    Calculate the Sleeping Conditions Score (1–99) from raw sensor readings.
+    Calculate the Sleeping Conditions Score (1–99) with breakdown.
     """
-    return _calculate_weighted_score(readings, SLEEP_SENSOR_CONFIG)
+    return calculate_weighted_score_with_breakdown(readings, SLEEP_SENSOR_CONFIG)
 
 
-def _calculate_weighted_score(readings: dict, config: Dict[str, dict]) -> int:
-    """Utility to calculate a composite score based on a given config."""
+def calculate_study_score_with_breakdown(readings: dict) -> Dict:
+    """
+    Calculate the Study Conditions Score (1–99) with breakdown.
+    """
+    return calculate_weighted_score_with_breakdown(readings, STUDY_SENSOR_CONFIG)
+
+
+def calculate_work_score_with_breakdown(readings: dict) -> Dict:
+    """
+    Calculate the Work Conditions Score (1–99) with breakdown.
+    """
+    return calculate_weighted_score_with_breakdown(readings, WORK_SENSOR_CONFIG)
+
+
+def calculate_fun_score_with_breakdown(readings: dict) -> Dict:
+    """
+    Calculate the Fun/Social Conditions Score (1–99) with breakdown.
+    """
+    return calculate_weighted_score_with_breakdown(readings, FUN_SENSOR_CONFIG)
+
+
+def calculate_weighted_score_with_breakdown(readings: dict, config: Dict[str, dict]) -> Dict:
+    """
+    Calculate a composite score and its mathematical breakdown.
+    Returns: { "score": int, "breakdown": List[dict] }
+    """
     weighted_sum = 0.0
     total_weight = 0.0
+    contributors = []
 
     for sensor_key, cfg in config.items():
         value = readings.get(sensor_key)
@@ -150,13 +283,33 @@ def _calculate_weighted_score(readings: dict, config: Dict[str, dict]) -> int:
             cfg["ideal_low"], cfg["ideal_high"],
             cfg["abs_min"], cfg["abs_max"],
         )
-        weighted_sum += ss * cfg["weight"]
+        contribution = ss * cfg["weight"]
+        weighted_sum += contribution
         total_weight += cfg["weight"]
+        
+        contributors.append({
+            "sensor": sensor_key,
+            "value": value,
+            "sub_score": ss,
+            "weight": cfg["weight"],
+            "points": contribution
+        })
 
     if total_weight == 0:
-        return 1
+        return {"score": 1, "breakdown": []}
 
     raw_score = weighted_sum / total_weight
     # Map from 0-100 internal scale to 1-99 output
     final = int(round(raw_score * 0.98 + 1))
-    return max(1, min(99, final))
+    clamped = max(1, min(99, final))
+    
+    return {
+        "score": clamped,
+        "breakdown": contributors
+    }
+
+
+def _calculate_weighted_score(readings: dict, config: Dict[str, dict]) -> int:
+    """Legacy utility for backward compatibility."""
+    res = calculate_weighted_score_with_breakdown(readings, config)
+    return res["score"]

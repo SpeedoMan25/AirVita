@@ -64,6 +64,36 @@ const Icons = {
       <path d="m6 6 12 12" />
     </svg>
   ),
+  health: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+    </svg>
+  ),
+  sleep: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+    </svg>
+  ),
+  study: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z" />
+    </svg>
+  ),
+  work: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+    </svg>
+  ),
+  fun: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3v1" /><path d="M12 20v1" />
+      <path d="M3 12h1" /><path d="M20 12h1" />
+      <path d="m18.364 5.636-.707.707" /><path d="m6.343 17.657-.707.707" />
+      <path d="m5.636 5.636.707.707" /><path d="m17.657 17.657.707.707" />
+    </svg>
+  ),
 }
 
 /* ─────────────────────────────────────────
@@ -163,6 +193,68 @@ const SENSOR_META = {
       { label: 'Acceptable', min: 300, max: 500, color: '#7baefa' },
       { label: 'Elevated', min: 500, max: 1000, color: '#d9a74a' },
       { label: 'Poor', min: 1000, color: '#d96a5c' },
+    ]
+  },
+  health: {
+    label: 'Room Health', unit: '', icon: 'health',
+    description: 'Overall environment balance. Combines IAQ (VOC/Particulates) with core comfort metrics (Temp/Humidity) via our Hybrid Neural Engine.',
+    min: 0, max: 99,
+    palette: { bg: '#f0f9f1', accent: '#4aab7a', iconBg: '#e2f2e7' },
+    getStatus: v => v < 40 ? 'Poor' : v < 60 ? 'Fair' : v < 80 ? 'Good' : 'Excellent',
+    ranges: [
+      { label: 'Poor', max: 40, color: '#d96a5c' },
+      { label: 'Fair', min: 40, max: 60, color: '#d9a74a' },
+      { label: 'Good', min: 60, max: 80, color: '#4aab7a' },
+      { label: 'Excellent', min: 80, color: '#2d6a4f' },
+    ]
+  },
+  sleep: {
+    label: 'Sleep Quality', unit: '', icon: 'sleep',
+    description: 'Measures restorative potential. Prioritizes low light (< 10 lux), cool temperatures, and minimal noise for deep REM cycles.',
+    min: 0, max: 99,
+    palette: { bg: '#f1f0f9', accent: '#667eea', iconBg: '#e7e6f2' },
+    getStatus: v => v < 30 ? 'Poor' : v < 60 ? 'Fair' : v < 85 ? 'Good' : 'Perfect',
+    ranges: [
+      { label: 'Poor', max: 30, color: '#d96a5c' },
+      { label: 'Fair', min: 30, max: 60, color: '#d9a74a' },
+      { label: 'Good', min: 60, max: 85, color: '#667eea' },
+      { label: 'Perfect', min: 85, color: '#4a36a8' },
+    ]
+  },
+  study: {
+    label: 'Study Focus', unit: '', icon: 'study',
+    description: 'Optimized for cognitive load. High light levels (> 400 lux) and fresh air (low VOCs) help maintain alertness and retention.',
+    min: 0, max: 99,
+    palette: { bg: '#fdf9f0', accent: '#d9a74a', iconBg: '#f9f2e2' },
+    getStatus: v => v < 40 ? 'Poor' : v < 70 ? 'Moderate' : 'Focused',
+    ranges: [
+      { label: 'Poor', max: 40, color: '#d96a5c' },
+      { label: 'Moderate', min: 40, max: 70, color: '#d9a74a' },
+      { label: 'Focused', min: 70, color: '#4aab7a' },
+    ]
+  },
+  work: {
+    label: 'Work Flow', unit: '', icon: 'work',
+    description: 'Balanced for sustained productivity. Keeps CO2/VOCs low to prevent brain fog while maintaining a comfortable thermal range.',
+    min: 0, max: 99,
+    palette: { bg: '#f0f7f9', accent: '#3272d9', iconBg: '#e2f0f2' },
+    getStatus: v => v < 40 ? 'Sluggish' : v < 70 ? 'Steady' : 'Flow State',
+    ranges: [
+      { label: 'Sluggish', max: 40, color: '#d96a5c' },
+      { label: 'Steady', min: 40, max: 70, color: '#3272d9' },
+      { label: 'Flow State', min: 70, color: '#4aab7a' },
+    ]
+  },
+  fun: {
+    label: 'Social Energy', unit: '', icon: 'fun',
+    description: 'The "Sparkle" factor. Measured by vibrant lighting and moderate noise levels that suit a lively social environment.',
+    min: 0, max: 99,
+    palette: { bg: '#f9f0f4', accent: '#fa709a', iconBg: '#f2e2e7' },
+    getStatus: v => v < 40 ? 'Dull' : v < 70 ? 'Pleasant' : 'Vibrant',
+    ranges: [
+      { label: 'Dull', max: 40, color: '#9a948c' },
+      { label: 'Pleasant', min: 40, max: 70, color: '#fa709a' },
+      { label: 'Vibrant', min: 70, color: '#ff0080' },
     ]
   },
 }
@@ -328,4 +420,4 @@ export default function SensorGrid({ reading, onInfoClick, unitSystem }) {
   )
 }
 
-export { SensorCard, SENSOR_META }
+export { SensorCard, SENSOR_META, Icons }

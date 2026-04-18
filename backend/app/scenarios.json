@@ -11,7 +11,10 @@
       "vocs": 20.0,
       "particulates": 2.0
     },
-    "expected": { "health": 99, "sleep": 99 }
+    "expected": {
+      "health": 83,
+      "sleep": 99
+    }
   },
   {
     "id": "office",
@@ -25,7 +28,10 @@
       "vocs": 100.0,
       "particulates": 5.0
     },
-    "expected": { "health": 95, "sleep": 60 }
+    "expected": {
+      "health": 99,
+      "sleep": 56
+    }
   },
   {
     "id": "wildfire",
@@ -39,7 +45,10 @@
       "vocs": 800.0,
       "particulates": 250.0
     },
-    "expected": { "health": 15, "sleep": 10 }
+    "expected": {
+      "health": 48,
+      "sleep": 21
+    }
   },
   {
     "id": "party",
@@ -53,7 +62,10 @@
       "vocs": 400.0,
       "particulates": 20.0
     },
-    "expected": { "health": 60, "sleep": 5 }
+    "expected": {
+      "health": 73,
+      "sleep": 24
+    }
   },
   {
     "id": "basement",
@@ -67,7 +79,10 @@
       "vocs": 1200.0,
       "particulates": 10.0
     },
-    "expected": { "health": 40, "sleep": 30 }
+    "expected": {
+      "health": 65,
+      "sleep": 55
+    }
   },
   {
     "id": "mountain",
@@ -80,6 +95,10 @@
       "pressure": 850.0,
       "vocs": 10.0,
       "particulates": 2.0
+    },
+    "expected": {
+      "health": 75,
+      "sleep": 40
     }
   },
   {
@@ -93,6 +112,10 @@
       "pressure": 980.0,
       "vocs": 100.0,
       "particulates": 15.0
+    },
+    "expected": {
+      "health": 71,
+      "sleep": 24
     }
   },
   {
@@ -106,6 +129,10 @@
       "pressure": 1015.0,
       "vocs": 20.0,
       "particulates": 2.0
+    },
+    "expected": {
+      "health": 96,
+      "sleep": 70
     }
   }
 ]

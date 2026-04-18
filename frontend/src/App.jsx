@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import ScoreGauge from './components/ScoreGauge'
-import SleepScoreGauge from './components/SleepScoreGauge'
 import SensorGrid, { SensorInfoDrawer, SENSOR_META } from './components/SensorCard'
 import AISummary from './components/AISummary'
 import ScenarioControls from './components/ScenarioControls'
@@ -27,7 +26,8 @@ export default function App() {
   // Drawer state (from origin/main)
   const [activeSensorKey, setActiveSensorKey] = useState(null)
   const [isTechOpen, setIsTechOpen] = useState(false)
-  const [unitSystem, setUnitSystem] = useState('metric') // 'metric' or 'imperial'
+  const [unitSystem, setUnitSystem] = useState('imperial') // 'metric' or 'imperial' default
+  const [selectedActivity, setSelectedActivity] = useState('health') 
 
   const toggleSensorInfo = useCallback((key) => {
     setActiveSensorKey(prev => prev === key ? null : key)
@@ -102,10 +102,15 @@ export default function App() {
   }, [fetchStatus, fetchScenarios])
 
   const score = status?.score ?? 0
-  const sleepScore = status?.sleep_score ?? 0
   const reading = status?.reading ?? null
   const breakdown = status?.breakdown ?? null
+  const activityBreakdowns = status?.activity_breakdowns ?? {}
   const connected = status?.connected ?? false
+
+  // Get current breakdown based on selection
+  const currentBreakdown = selectedActivity === 'health' 
+    ? breakdown 
+    : { type: 'weighted', activity: selectedActivity, factors: activityBreakdowns[selectedActivity] }
 
   return (
     <div className={`app ${activeSensorKey ? 'app--drawer-open' : ''} ${isTechOpen ? 'app--tech-open' : ''}`}>
@@ -147,13 +152,27 @@ export default function App() {
               </button>
             </div>
             
-            <div className="app__status-pill">
-              <span className={`app__status-dot ${connected ? 'app__status-dot--on' : 'app__status-dot--off'}`} />
-              {connected ? 'Live' : 'Offline'}
+            <div className="app__source-select-wrap">
+              <select 
+                className="app__source-select"
+                value={manualScenarioId || 'live'}
+                onChange={(e) => selectScenario(e.target.value)}
+              >
+                <option value="live">📡 Live (Hardware)</option>
+                <optgroup label="Simulations">
+                  {scenarios.map(s => (
+                    <option key={s.id} value={s.id}>
+                      {s.icon} {s.name}
+                    </option>
+                  ))}
+                </optgroup>
+              </select>
+              <div className={`app__source-status app__source-status--${connected ? 'on' : 'off'}`}></div>
             </div>
+
             {lastFetch && (
               <span className="app__last-update">
-                {lastFetch.toLocaleTimeString()}
+                {lastFetch.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </span>
             )}
           </div>
@@ -171,8 +190,41 @@ export default function App() {
           {/* Hero Row: Gauges + AI Summary */}
           <div className="app__hero">
             <div className="app__gauges">
-              <ScoreGauge score={score} />
-              <SleepScoreGauge score={sleepScore} />
+              <ScoreGauge 
+                type="health" 
+                score={status?.score} 
+                isActive={selectedActivity === 'health'}
+                onClick={() => setSelectedActivity('health')}
+                onInfoClick={toggleSensorInfo}
+              />
+              <ScoreGauge 
+                type="sleep" 
+                score={status?.sleep_score} 
+                isActive={selectedActivity === 'sleep'}
+                onClick={() => setSelectedActivity('sleep')}
+                onInfoClick={toggleSensorInfo}
+              />
+              <ScoreGauge 
+                type="study" 
+                score={status?.study_score} 
+                isActive={selectedActivity === 'study'}
+                onClick={() => setSelectedActivity('study')}
+                onInfoClick={toggleSensorInfo}
+              />
+              <ScoreGauge 
+                type="work" 
+                score={status?.work_score} 
+                isActive={selectedActivity === 'work'}
+                onClick={() => setSelectedActivity('work')}
+                onInfoClick={toggleSensorInfo}
+              />
+              <ScoreGauge 
+                type="fun" 
+                score={status?.fun_score} 
+                isActive={selectedActivity === 'fun'}
+                onClick={() => setSelectedActivity('fun')}
+                onInfoClick={toggleSensorInfo}
+              />
             </div>
             <AISummary
               summary={analysis.summary}
@@ -215,7 +267,17 @@ export default function App() {
             </div>
           </div>
           <div className="app__tech-drawer-body">
+            {/* Full Transparency: Render all scoring math */}
             <CalculationMath breakdown={breakdown} />
+            {Object.keys(activityBreakdowns).map(act => (
+              <CalculationMath 
+                key={act} 
+                breakdown={{ type: 'weighted', activity: act, factors: activityBreakdowns[act] }} 
+              />
+            ))}
+            
+            <div className="app__tech-divider"></div>
+            <h4 className="app__tech-section-title">Environment Simulation</h4>
             <ScenarioControls 
               scenarios={scenarios} 
               activeId={manualScenarioId}
