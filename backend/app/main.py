@@ -14,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.models import RoomStatus
 from app.serial_reader import get_current_status, run_serial_listener
+from app.gemini import generate_analysis
 
 # ──────────────────────────────────────────────
 # Logging
@@ -85,3 +86,20 @@ async def current_status():
     - `connected`: whether the serial port is active
     """
     return get_current_status()
+
+
+@app.get("/api/analyze")
+async def analyze():
+    """
+    Run Gemini AI analysis on the latest sensor reading.
+
+    Called on-demand (e.g., when the user clicks "Refresh Analysis").
+    Returns a friendly summary and list of flagged concerns.
+    """
+    status = get_current_status()
+    if status.reading is None:
+        return {"summary": "No sensor data available yet.", "flags": []}
+
+    reading_dict = status.reading.model_dump()
+    result = generate_analysis(reading_dict, status.score)
+    return result

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import ScoreGauge from './components/ScoreGauge'
 import SensorGrid from './components/SensorCard'
+import AISummary from './components/AISummary'
 import './App.css'
 
 const API_BASE = import.meta.env.VITE_API_URL || ''
@@ -10,6 +11,11 @@ export default function App() {
   const [status, setStatus] = useState(null)
   const [error, setError] = useState(null)
   const [lastFetch, setLastFetch] = useState(null)
+
+  // AI analysis state
+  const [analysis, setAnalysis] = useState({ summary: '', flags: [] })
+  const [analysisLoading, setAnalysisLoading] = useState(false)
+  const [analysisError, setAnalysisError] = useState(null)
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -21,6 +27,21 @@ export default function App() {
       setLastFetch(new Date())
     } catch (err) {
       setError(`Unable to reach backend: ${err.message}`)
+    }
+  }, [])
+
+  const fetchAnalysis = useCallback(async () => {
+    setAnalysisLoading(true)
+    setAnalysisError(null)
+    try {
+      const res = await fetch(`${API_BASE}/api/analyze`)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json()
+      setAnalysis(data)
+    } catch (err) {
+      setAnalysisError(`Analysis failed: ${err.message}`)
+    } finally {
+      setAnalysisLoading(false)
     }
   }, [])
 
@@ -57,6 +78,15 @@ export default function App() {
       <main className="app__main">
         {/* Score Gauge */}
         <ScoreGauge score={score} connected={connected} />
+
+        {/* AI Analysis Card */}
+        <AISummary
+          summary={analysis.summary}
+          flags={analysis.flags}
+          loading={analysisLoading}
+          error={analysisError}
+          onRefresh={fetchAnalysis}
+        />
 
         <hr className="app__divider" />
         <h2 className="app__section-title">Sensor Readings</h2>

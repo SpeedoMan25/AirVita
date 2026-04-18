@@ -1,0 +1,200 @@
+/* ─────────────────────────────────────────────
+   AISummary — Gemini AI analysis card
+   ───────────────────────────────────────────── */
+
+.ai-summary {
+  width: 100%;
+  max-width: 680px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-xl, 20px);
+  backdrop-filter: blur(12px);
+  padding: 1.5rem 1.75rem;
+  animation: fadeInUp 0.5s ease-out;
+  box-shadow:
+    0 0 40px rgba(99, 102, 241, 0.06),
+    0 4px 24px rgba(0, 0, 0, 0.3);
+}
+
+/* ── Header ── */
+.ai-summary__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.ai-summary__title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.ai-summary__icon {
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.ai-summary__title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary, #f1f5f9);
+  margin: 0;
+  letter-spacing: -0.3px;
+}
+
+.ai-summary__badge {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #818cf8;
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  border-radius: 999px;
+  padding: 2px 10px;
+}
+
+/* ── Refresh Button ── */
+.ai-summary__refresh-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.5rem 1.1rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #c7d2fe;
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.ai-summary__refresh-btn:hover:not(:disabled) {
+  background: rgba(99, 102, 241, 0.28);
+  border-color: rgba(99, 102, 241, 0.55);
+  color: #e0e7ff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.25);
+}
+
+.ai-summary__refresh-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ai-summary__refresh-btn--loading .ai-summary__refresh-icon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ── Body ── */
+.ai-summary__body {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* ── Summary Text ── */
+.ai-summary__text {
+  font-size: 0.97rem;
+  line-height: 1.7;
+  color: var(--text-secondary, #94a3b8);
+  margin: 0;
+  transition: opacity 0.4s ease;
+}
+
+.ai-summary__text--visible {
+  opacity: 1;
+}
+
+.ai-summary__text--skeleton {
+  min-height: 3.5rem;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.05) 25%,
+    rgba(255, 255, 255, 0.10) 50%,
+    rgba(255, 255, 255, 0.05) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: 8px;
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── Placeholder ── */
+.ai-summary__placeholder {
+  font-size: 0.9rem;
+  color: var(--text-muted, #64748b);
+  margin: 0;
+  line-height: 1.6;
+}
+
+/* ── Error ── */
+.ai-summary__error {
+  font-size: 0.88rem;
+  color: #f87171;
+  margin: 0;
+  padding: 0.65rem 1rem;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 10px;
+}
+
+/* ── Flags ── */
+.ai-summary__flags {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ai-summary__flags-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted, #64748b);
+}
+
+.ai-summary__flags-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.ai-summary__flag-chip {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.08);
+  border: 1px solid rgba(251, 191, 36, 0.22);
+  border-radius: 8px;
+  padding: 4px 12px;
+}
+
+/* ── All Clear ── */
+.ai-summary__all-clear {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #34d399;
+  padding: 0.5rem 1rem;
+  background: rgba(52, 211, 153, 0.07);
+  border: 1px solid rgba(52, 211, 153, 0.2);
+  border-radius: 10px;
+}

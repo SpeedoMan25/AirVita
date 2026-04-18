@@ -24,6 +24,7 @@ services:
       - "8000:8000"
     environment:
       - MOCK_SERIAL=true
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
       # - SERIAL_PORT=/dev/ttyACM0
       # - SERIAL_BAUD=115200
     # ── Linux USB Passthrough (uncomment to use real Pico) ──
