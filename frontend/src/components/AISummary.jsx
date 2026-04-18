@@ -19,7 +19,7 @@ export default function AISummary({ summary, flags = [], loading, error, onRefre
           disabled={loading}
           id="refresh-analysis-btn"
         >
-          {loading ? 'Thinking...' : 'Run Update'}
+          {loading ? 'Thinking...' : 'Run Analysis'}
         </button>
       </div>
 
@@ -32,7 +32,7 @@ export default function AISummary({ summary, flags = [], loading, error, onRefre
 
         {!error && !loading && !summary && (
           <div className="insight-card__placeholder">
-            <p>Tap "Run Update" to get an AI-powered breakdown of your room's health.</p>
+            <p>Tap "Run Analysis" to get an AI-powered breakdown of your room's health.</p>
           </div>
         )}
 
