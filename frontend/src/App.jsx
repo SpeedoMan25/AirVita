@@ -25,10 +25,17 @@ export default function App() {
 
   // Drawer state (from origin/main)
   const [activeSensorKey, setActiveSensorKey] = useState(null)
+  const [isTechOpen, setIsTechOpen] = useState(false)
 
   const toggleSensorInfo = useCallback((key) => {
     setActiveSensorKey(prev => prev === key ? null : key)
+    if (key) setIsTechOpen(false) // Close tech when info opens
   }, [])
+
+  const toggleTechDrawer = () => {
+    setIsTechOpen(prev => !prev)
+    if (!isTechOpen) setActiveSensorKey(null) // Close info when tech opens
+  }
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -100,33 +107,6 @@ export default function App() {
   return (
     <div className={`app ${activeSensorKey ? 'app--drawer-open' : ''} ${isTechOpen ? 'app--tech-open' : ''}`}>
       <div className="app__content-wrapper">
-        {/* Sidebar: Technical Controls (Toggleable Left Drawer) */}
-        {isTechOpen && (
-          <aside className="app__tech-drawer">
-            <button className="app__tech-drawer-close" onClick={() => setIsTechOpen(false)}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '20px', height: '20px' }}>
-                <path d="M18 6 6 18" /><path d="m6 6 12 12" />
-              </svg>
-            </button>
-            <div className="app__tech-drawer-header">
-              <div className="app__tech-drawer-icon">🛠️</div>
-              <div>
-                <h3>Neural Engine</h3>
-                <p>Simulations & Scoring</p>
-              </div>
-            </div>
-            <div className="app__tech-drawer-body">
-              <CalculationMath breakdown={breakdown} />
-              <ScenarioControls 
-                scenarios={scenarios} 
-                activeId={manualScenarioId}
-                onSelect={selectScenario}
-              />
-            </div>
-          </aside>
-        )}
-
-        {/* ── Header ── */}
         <header className="app__header">
           <div className="app__brand">
             <button 
@@ -196,6 +176,32 @@ export default function App() {
           RoomPulse v1.3 · Neural Engine · HackAugie 2026
         </footer>
       </div>
+
+      {/* Tech Drawer (Left) */}
+      {isTechOpen && (
+        <aside className="app__tech-drawer">
+          <button className="app__tech-drawer-close" onClick={() => setIsTechOpen(false)}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '20px', height: '20px' }}>
+              <path d="M18 6 6 18" /><path d="m6 6 12 12" />
+            </svg>
+          </button>
+          <div className="app__tech-drawer-header">
+            <div className="app__tech-drawer-icon">🛠️</div>
+            <div>
+              <h3>Neural Engine</h3>
+              <p>Simulations & Scoring</p>
+            </div>
+          </div>
+          <div className="app__tech-drawer-body">
+            <CalculationMath breakdown={breakdown} />
+            <ScenarioControls 
+              scenarios={scenarios} 
+              activeId={manualScenarioId}
+              onSelect={selectScenario}
+            />
+          </div>
+        </aside>
+      )}
 
       {/* Info Drawer (from origin/main) */}
       {activeSensorKey && (

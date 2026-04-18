@@ -124,7 +124,7 @@
 /* ── Fixed Tech Drawer (Left) ── */
 .app__tech-drawer {
   background: var(--bg-card);
-  width: 320px;
+  width: 380px; /* Match right drawer width */
   height: 100vh;
   box-shadow: 10px 0 40px rgba(0,0,0,0.06);
   position: fixed;
@@ -138,44 +138,46 @@
 }
 
 .app__tech-drawer-header {
-  padding: 2.5rem 2rem 1.5rem;
+  padding: 2.5rem 2.5rem 1.5rem; /* Match right drawer padding */
   display: flex;
   align-items: center;
   gap: 1.25rem;
 }
 
 .app__tech-drawer-icon {
-  width: 52px;
-  height: 52px;
+  width: 64px;
+  height: 64px;
   border-radius: var(--r-md);
   background: var(--bg-app);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
+  font-size: 1.8rem;
   border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
 }
 
 .app__tech-drawer-header h3 {
-  font-size: 1.25rem;
+  font-size: 1.5rem;
   font-weight: 800;
   color: var(--text-primary);
   margin: 0;
+  letter-spacing: -0.02em;
 }
 
 .app__tech-drawer-header p {
-  font-size: 0.85rem;
+  font-size: 1rem;
   color: var(--text-secondary);
   margin-top: 2px;
 }
 
 .app__tech-drawer-body {
-  padding: 0 2rem 2rem;
+  padding: 0 2.5rem 2.5rem;
   flex: 1;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: var(--gap-md);
+  gap: var(--gap-lg);
 }
 
 .app__tech-drawer-close {
@@ -193,6 +195,7 @@
   cursor: pointer;
   color: var(--text-secondary);
   transition: all 0.2s ease;
+  z-index: 10;
 }
 
 .app__tech-drawer-close:hover {
