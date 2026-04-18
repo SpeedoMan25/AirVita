@@ -1,104 +1,98 @@
 /* ─────────────────────────────────────────────
-   RoomPulse — Global Styles & Design Tokens
+   RoomPulse — Design System
+   Light · Colorful · Alive
    ───────────────────────────────────────────── */
 
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
 
 :root {
-  /* ── Palette: Clean dark with warm neutrals ── */
-  --bg-primary: #121417;
-  --bg-secondary: #1a1d21;
-  --bg-card: #1e2126;
-  --bg-card-hover: #252930;
-  --border-subtle: #2a2e34;
-  --border-hover: #3a3f47;
+  /* ── Surfaces — warm light mode ── */
+  --bg: #f7f5f2;
+  --bg-card: #ffffff;
+  --bg-raised: #ffffff;
 
-  --text-primary: #dce1e8;
-  --text-secondary: #8a919c;
-  --text-muted: #565d68;
+  /* ── Text ── */
+  --text-primary: #1a1816;
+  --text-secondary: #5c5750;
+  --text-muted: #9a948c;
 
-  /* ── Functional colors ── */
-  --color-good: #4aba8a;
-  --color-warn: #d9a74a;
-  --color-bad: #c75c5c;
-  --color-info: #5b8fd9;
+  /* ── Shadows — soft depth ── */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 14px rgba(0,0,0,0.06), 0 2px 6px rgba(0,0,0,0.04);
+  --shadow-lg: 0 8px 30px rgba(0,0,0,0.08);
 
-  /* Score gradient */
-  --score-red: #c75c5c;
-  --score-orange: #d9a74a;
-  --score-yellow: #d4c06a;
-  --score-green: #4aba8a;
-  --score-emerald: #3a9e78;
+  /* ── Sensor card palettes (bg, accent, icon-bg) ── */
+  --temp-bg: #fef0ec;      --temp-accent: #e66b4d;     --temp-icon: #fdddd5;
+  --humid-bg: #eaf3fe;     --humid-accent: #4a8fe7;    --humid-icon: #d3e5fb;
+  --light-bg: #fef8e7;     --light-accent: #d4a017;    --light-icon: #fcefc4;
+  --noise-bg: #f3effe;     --noise-accent: #7c5cbf;    --noise-icon: #e5dcfa;
+  --press-bg: #eef7f3;     --press-accent: #3a9e78;    --press-icon: #d2ece2;
+  --pm-bg: #fceef0;        --pm-accent: #c95d6d;       --pm-icon: #f6d4d9;
+  --voc-bg: #e9f5f5;       --voc-accent: #3a918f;      --voc-icon: #cfe8e7;
 
-  /* Spacing */
-  --space-xs: 0.25rem;
-  --space-sm: 0.5rem;
-  --space-md: 1rem;
-  --space-lg: 1.5rem;
-  --space-xl: 2rem;
-  --space-2xl: 2.5rem;
+  /* ── Score tones ── */
+  --score-low: #d96a5c;
+  --score-mid: #d9a74a;
+  --score-high: #4aab7a;
 
-  /* Radii */
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 18px;
-  --radius-full: 50%;
+  /* ── Functional ── */
+  --action: #3272d9;
+  --action-hover: #2861bf;
+  --good: #4aab7a;
+  --warn: #d9a74a;
+  --bad: #d96a5c;
 
-  /* Shadows */
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.2);
-  --shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.25);
+  /* ── Spacing ── */
+  --gap-xs: 0.375rem;
+  --gap-sm: 0.75rem;
+  --gap-md: 1.25rem;
+  --gap-lg: 2rem;
+  --gap-xl: 3rem;
 
-  /* Typography */
-  --font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-mono: 'IBM Plex Mono', 'Consolas', monospace;
+  /* ── Radii ── */
+  --r-sm: 10px;
+  --r-md: 16px;
+  --r-lg: 24px;
+  --r-xl: 32px;
+
+  /* ── Font ── */
+  --font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
 }
 
-/* Reset */
-*,
-*::before,
-*::after {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-html {
-  font-size: 16px;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
+/* ── Reset ── */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html { font-size: 16px; -webkit-font-smoothing: antialiased; }
 body {
-  font-family: var(--font-family);
-  background: var(--bg-primary);
+  font-family: var(--font);
+  background: var(--bg);
   color: var(--text-primary);
   min-height: 100vh;
   line-height: 1.5;
 }
-
-#root {
-  position: relative;
-  z-index: 1;
-}
+#root { position: relative; z-index: 1; }
 
 /* Scrollbar */
-::-webkit-scrollbar { width: 5px; }
-::-webkit-scrollbar-track { background: var(--bg-primary); }
-::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 3px; }
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d1ccc6; border-radius: 3px; }
 
-/* Utility animations */
+/* Animations */
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
 }
 
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
 
-@keyframes shimmer {
-  0%   { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+@keyframes breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
 }
