@@ -16,6 +16,7 @@ class SensorReading(BaseModel):
     pressure_hpa: float = Field(..., description="Atmospheric pressure in hPa")
     pm25_ugm3: float = Field(..., description="PM2.5 particulate matter in µg/m³")
     voc_ppb: float = Field(..., description="Volatile organic compounds in ppb")
+    pot_pct: float = Field(0.0, description="Potentiometer setting percentage")
     timestamp_ms: Optional[int] = Field(None, description="Pico tick timestamp")
 
 

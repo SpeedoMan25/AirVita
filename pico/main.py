@@ -1,139 +1,119 @@
 """
 RoomPulse — Raspberry Pi Pico Edge Code (MicroPython)
-
-This script runs on a Raspberry Pi Pico (standard, no Wi-Fi).
-It reads from wired sensors and prints JSON payloads over USB serial
-at a configurable interval.
-
-When real sensors are not connected, it generates realistic mock data
-with smooth random walk so you can test the full data pipeline immediately.
-
-Sensors Supported:
-  - Temperature (°C)       — e.g., DHT22 / BME280
-  - Humidity (%RH)         — e.g., DHT22 / BME280
-  - Light Level (lux)      — e.g., BH1750 / LDR + ADC
-  - Noise Level (dB)       — e.g., MAX4466 analog mic + ADC
-  - Air Pressure (hPa)     — e.g., BMP280 / BME280
-  - Particles (µg/m³)      — e.g., PMS5003 (PM2.5)
-  - VOCs (ppb)             — e.g., SGP30 / CCS811
+Hardware Integrated Version (I2C, UART, I2S, ADC, NeoPixel)
 """
 
 import json
 import time
+from machine import Pin, I2C, UART, ADC, I2S
+import neopixel
+
+# Import drivers from lib/
+try:
+    from lib.bme688 import BME688
+    from lib.bh1750 import BH1750
+    from lib.lcd1602 import LCD1602
+except ImportError:
+    print("Warning: Drivers not found in lib/. Ensure lib/ directory is uploaded.")
+
+# Pins based on YOUR hardware setup image
+PIN_SDA = 0
+PIN_SCL = 1
+PIN_LDR = 28
+PIN_NEO = 2
+
+# I2C Shared Bus (I2C0)
+i2c = I2C(0, sda=Pin(PIN_SDA), scl=Pin(PIN_SCL), freq=400000)
+
+# Global objects
+lcd = None
+status_leds = neopixel.NeoPixel(Pin(PIN_NEO), 8)
+ldr_pin = ADC(Pin(PIN_LDR))
 
 # ──────────────────────────────────────────────
-# Configuration
-# ──────────────────────────────────────────────
-READING_INTERVAL_S = 2  # seconds between readings
-USE_MOCK = True          # Set to False when real sensor drivers are wired up
-
-# ──────────────────────────────────────────────
-# Mock Data Generator (random walk with bounds)
+# Visual Animations
 # ──────────────────────────────────────────────
 
-# Simple pseudo-random number generator for MicroPython
-# (works even without the `random` module on some Pico builds)
-_seed = int(time.ticks_ms())
+def wheel(pos):
+    """Generate rainbow colors across 0-255."""
+    if pos < 85:
+        return (pos * 3, 255 - pos * 3, 0)
+    elif pos < 170:
+        pos -= 85
+        return (255 - pos * 3, 0, pos * 3)
+    else:
+        pos -= 170
+        return (0, pos * 3, 255 - pos * 3)
 
-def _pseudo_random():
-    """Returns a float between 0.0 and 1.0 using an LCG."""
-    global _seed
-    _seed = (_seed * 1103515245 + 12345) & 0x7FFFFFFF
-    return (_seed >> 16) / 32767.0
+def rainbow_wave(offset):
+    """Display a rainbow wave on the 8 LEDs."""
+    for i in range(8):
+        status_leds[i] = wheel((i * 256 // 8 + offset) & 255)
+    status_leds.write()
 
-def _clamp(value, lo, hi):
-    """Clamp a value between lo and hi."""
-    if value < lo:
-        return lo
-    if value > hi:
-        return hi
-    return value
-
-# Current mock values (starting points)
-_mock_state = {
-    "temperature_c":   22.0,
-    "humidity_pct":    50.0,
-    "light_lux":       400.0,
-    "noise_db":        35.0,
-    "pressure_hpa":    1013.0,
-    "pm25_ugm3":       12.0,
-    "voc_ppb":         150.0,
-}
-
-# Bounds and max step sizes for random-walk
-_mock_config = {
-    "temperature_c":   {"min": 15.0,  "max": 35.0,  "step": 0.3},
-    "humidity_pct":    {"min": 20.0,  "max": 90.0,  "step": 1.0},
-    "light_lux":       {"min": 0.0,   "max": 1000.0,"step": 15.0},
-    "noise_db":        {"min": 20.0,  "max": 90.0,  "step": 2.0},
-    "pressure_hpa":    {"min": 980.0, "max": 1040.0,"step": 0.5},
-    "pm25_ugm3":       {"min": 0.0,   "max": 150.0, "step": 3.0},
-    "voc_ppb":         {"min": 0.0,   "max": 1500.0,"step": 20.0},
-}
-
-
-def _read_mock_sensors():
-    """
-    Advances the random-walk mock state and returns a sensor dict.
-    Values drift naturally, making the dashboard feel alive.
-    """
-    for key, cfg in _mock_config.items():
-        delta = ((_pseudo_random() - 0.5) * 2.0) * cfg["step"]
-        _mock_state[key] = _clamp(
-            round(_mock_state[key] + delta, 2),
-            cfg["min"],
-            cfg["max"],
-        )
-    return dict(_mock_state)
-
+def dim_red():
+    """Set all LEDs to a dim, steady red."""
+    for i in range(8):
+        status_leds[i] = (20, 0, 0)
+    status_leds.write()
 
 # ──────────────────────────────────────────────
-# Real Sensor Reading (stubs – fill in per your wiring)
-# ──────────────────────────────────────────────
-
-def _read_real_sensors():
-    """
-    Replace the body of this function with actual sensor driver calls.
-    Each driver should already be initialized in setup().
-    """
-    # Example (pseudo-code):
-    # temp, hum = dht_sensor.read()
-    # lux = light_sensor.read()
-    # ...
-    return {
-        "temperature_c":   0.0,
-        "humidity_pct":    0.0,
-        "light_lux":       0.0,
-        "noise_db":        0.0,
-        "pressure_hpa":    0.0,
-        "pm25_ugm3":       0.0,
-        "voc_ppb":         0.0,
-    }
-
-
-# ──────────────────────────────────────────────
-# Main Loop
+# Setup and Main loop
 # ──────────────────────────────────────────────
 
 def setup():
-    """
-    Initialize sensor drivers here when USE_MOCK is False.
-    For example: i2c = I2C(0, sda=Pin(0), scl=Pin(1))
-    """
-    pass
-
+    global lcd
+    print("Initializing Focused Hardware (LCD + LDR + Neo)...")
+    try:
+        lcd = LCD1602(i2c)
+        lcd.message("Focus Mode Active", "LDR + LCD + NEO")
+    except Exception as e:
+        print(f"LCD Init Error: {e}")
 
 def loop():
-    """Continuously read sensors and print JSON over USB serial."""
-    read_fn = _read_mock_sensors if USE_MOCK else _read_real_sensors
-
+    offset = 0
+    lcd_counter = 0
     while True:
-        payload = read_fn()
-        payload["timestamp_ms"] = time.ticks_ms()
-        print(json.dumps(payload))
-        time.sleep(READING_INTERVAL_S)
-
+        try:
+            # 1. Read Light Level (%)
+            raw = ldr_pin.read_u16()
+            light_pct = (raw / 65535) * 100
+            is_bright = light_pct > 65 # Threshold approx matching your test
+            
+            # 2. Output to LEDs
+            if is_bright:
+                rainbow_wave(offset)
+                offset = (offset + 10) % 256
+                mode = "BRIGHT"
+            else:
+                dim_red()
+                mode = "DIM"
+            
+            # 3. Output to LCD (Always update regardless of offset)
+            if lcd_counter % 10 == 0:
+                lcd.message(f"Light: {light_pct:5.1f}%", f"MODE: {mode}")
+            
+            lcd_counter = (lcd_counter + 1) % 100
+            
+            # 4. JSON for Backend
+            payload = {
+                "light_lux": light_pct,
+                "mode": mode,
+              """   "temperature_c": 0.0, # Placeholder
+                "humidity_pct": 0.0,
+                "pressure_hpa": 0.0,
+                "pm25_ugm3": 0.0,
+                "voc_ppb": 0.0, """
+                "timestamp_ms": time.ticks_ms()
+            }
+            print(json.dumps(payload))
+            
+        except Exception as e:
+            print(json.dumps({"error": str(e)}))
+            
+        time.sleep(0.05 if is_bright else 0.1)
 
 # Entry point
 setup()
 loop()
+
