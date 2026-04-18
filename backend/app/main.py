@@ -8,7 +8,8 @@ import asyncio
 from pathlib import Path
 from datetime import datetime, timezone
 from contextlib import asynccontextmanager
-from app.models import RoomStatus, SensorReading
+import pandas as pd
+from app.models import RoomStatus, SensorReading, ScoreBreakdown
 from app.gemini import generate_analysis
 
 # Configuration
@@ -20,6 +21,17 @@ SCALER_PATH = MODEL_DIR / "scaler.pkl"
 model = None
 scaler = None
 latest_status = RoomStatus(reading=None, score=0, last_updated=None, connected=False)
+
+# Simulation State
+AUTO_CYCLE = True
+MANUAL_SCENARIO_EXPIRY = 0 # timestamp when auto-cycle should resume
+
+SIMULATION_SCENARIOS = [
+    {"id": "ideal", "name": "Ideal Spring Day", "data": [45.0, 1013.0, 500.0, 22.0, 10.0, 15.0, 20.0, 15.0], "vocs": 50.0, "particulates": 5.0},
+    {"id": "wildfire", "name": "California Wildfire (Smoke)", "data": [15.0, 1005.0, 200.0, 35.0, 10.0, 15.0, 20.0, 15.0], "vocs": 800.0, "particulates": 250.0},
+    {"id": "party", "name": "Loud Classroom / Party", "data": [55.0, 1010.0, 800.0, 26.0, 80.0, 90.0, 70.0, 85.0], "vocs": 400.0, "particulates": 20.0},
+    {"id": "basement", "name": "Stuffy Basement", "data": [85.0, 1015.0, 50.0, 18.0, 5.0, 5.0, 5.0, 5.0], "vocs": 1200.0, "particulates": 10.0}
+]
 
 # Hybrid Scoring Constants
 COEFF_MLP_BASE = 1.0
@@ -46,21 +58,17 @@ def calculate_final_iaq(base_score: float, vocs: float, particulates: float) -> 
 def predict_score(data: dict) -> dict:
     """
     Unified scoring function for both POST API and Background Serial Reader.
-    Calculates MLP base score + Hybrid IAQ final score.
+    Calculates MLP base score + Hybrid IAQ final score breakdown.
     """
     if model is None or scaler is None:
         return {"error": "Model not loaded"}
 
-    # Extract MLP features (order matters!)
-    # Scenarios: (humidity, pressure, light, temperature, sound_high, sound_mid, sound_low, sound_amp)
-    mlp_feature_keys = [
-        "humidity_pct", "pressure_hpa", "light_lux", "temperature_c",
-        "noise_high", "noise_mid", "noise_low", "noise_db"
+    # Extract MLP features (ORDER AND NAMES MUST MATCH train_model.py)
+    feature_names = [
+        "humidity", "pressure", "light", "temperature",
+        "sound_high", "sound_mid", "sound_low", "sound_amp"
     ]
     
-    # Map input keys to our internal MLP feature list
-    # The Pico sends 'temperature_c' etc. The API payload sends 'temperature'. 
-    # We normalize to the Pico names for internal scoring.
     features_raw = [
         data.get("humidity_pct", data.get("humidity", 0)),
         data.get("pressure_hpa", data.get("pressure", 0)),
@@ -72,17 +80,24 @@ def predict_score(data: dict) -> dict:
         data.get("noise_db", data.get("sound_amp", 0))
     ]
 
-    features = np.array(features_raw).reshape(1, -1)
-    scaled = scaler.transform(features)
+    # Use a DataFrame to satisfy scikit-learn's feature name check
+    df = pd.DataFrame([features_raw], columns=feature_names)
+    scaled = scaler.transform(df)
     base_score = float(model.predict(scaled)[0])
     
     vocs = data.get("voc_ppb", data.get("vocs", 0))
     pm25 = data.get("pm25_ugm3", data.get("particulates", 0))
     
+    # Calculate penalty components
+    voc_penalty = vocs * COEFF_VOC
+    pm25_penalty = pm25 * COEFF_PARTICLES
+    
     final_score = calculate_final_iaq(base_score, vocs, pm25)
     
     return {
         "base_score": base_score,
+        "voc_penalty": voc_penalty,
+        "pm25_penalty": pm25_penalty,
         "final_score": final_score,
         "reading": {
             "temperature_c": features_raw[3],
@@ -122,50 +137,61 @@ async def run_data_generator():
     Background job that either reads serial or generates mock scenarios.
     Updates the global 'latest_status'.
     """
-    global latest_status
+    global latest_status, AUTO_CYCLE, MANUAL_SCENARIO_EXPIRY
     use_mock = os.getenv("MOCK_SERIAL", "false").lower() in ("true", "1", "yes")
     
     if use_mock:
-        print("🧪 Simulation Mode: Cycling through health scenarios...")
-        # Scenarios from simulate_scenarios.py
-        scenarios = [
-            {"name": "Ideal Spring Day", "data": [45.0, 1013.0, 500.0, 22.0, 10.0, 15.0, 20.0, 15.0], "vocs": 50.0, "particulates": 5.0},
-            {"name": "California Wildfire (Smoke)", "data": [15.0, 1005.0, 200.0, 35.0, 10.0, 15.0, 20.0, 15.0], "vocs": 800.0, "particulates": 250.0},
-            {"name": "Loud Classroom / Party", "data": [55.0, 1010.0, 800.0, 26.0, 80.0, 90.0, 70.0, 85.0], "vocs": 400.0, "particulates": 20.0},
-            {"name": "Stuffy Basement", "data": [85.0, 1015.0, 50.0, 18.0, 5.0, 5.0, 5.0, 5.0], "vocs": 1200.0, "particulates": 10.0}
-        ]
+        print("🧪 Simulation Mode: Started.")
+        current_idx = 0
         
         while True:
-            for s in scenarios:
-                # Prepare data for predict_score
-                # MLP expects: [humidity, pressure, light, temperature, sound_high, sound_mid, sound_low, sound_amp]
-                payload = {
-                    "humidity": s["data"][0],
-                    "pressure": s["data"][1],
-                    "light": s["data"][2],
-                    "temperature": s["data"][3],
-                    "sound_high": s["data"][4],
-                    "sound_mid": s["data"][5],
-                    "sound_low": s["data"][6],
-                    "sound_amp": s["data"][7],
-                    "vocs": s["vocs"],
-                    "particulates": s["particulates"]
-                }
-                
-                results = predict_score(payload)
-                if "error" not in results:
-                    latest_status = RoomStatus(
-                        reading=SensorReading(
-                            **results["reading"],
-                            timestamp_ms=int(datetime.now(timezone.utc).timestamp() * 1000)
-                        ),
-                        score=results["final_score"],
-                        last_updated=datetime.now(timezone.utc),
-                        connected=True
-                    )
-                    print(f"Simulated Scene: {s['name']} | Score: {results['final_score']}")
-                
-                await asyncio.sleep(5) # Give the user time to see the scene change
+            # Check if manual override is active
+            if not AUTO_CYCLE and datetime.now(timezone.utc).timestamp() < MANUAL_SCENARIO_EXPIRY:
+                await asyncio.sleep(1)
+                continue
+            
+            # If we reached here, either AUTO_CYCLE is True or override expired
+            if not AUTO_CYCLE:
+                print("♻️ Manual override expired. Resuming auto-cycle...")
+                AUTO_CYCLE = True
+
+            s = SIMULATION_SCENARIOS[current_idx % len(SIMULATION_SCENARIOS)]
+            current_idx += 1
+            
+            # Prepare data
+            payload = {
+                "humidity": s["data"][0], "pressure": s["data"][1], "light": s["data"][2], "temperature": s["data"][3],
+                "sound_high": s["data"][4], "sound_mid": s["data"][5], "sound_low": s["data"][6], "sound_amp": s["data"][7],
+                "vocs": s["vocs"], "particulates": s["particulates"]
+            }
+            
+            update_status_from_dict(payload)
+            print(f"Simulated Scene: {s['name']} | Score: {latest_status.score}")
+            await asyncio.sleep(8) # Cycle every 8 seconds in auto mode
+    else:
+        print("🔌 Production Mode: Waiting for serial data...")
+        pass
+
+def update_status_from_dict(payload_data: dict):
+    """Utility to run prediction and update latest_status."""
+    global latest_status
+    results = predict_score(payload_data)
+    if "error" not in results:
+        latest_status = RoomStatus(
+            reading=SensorReading(
+                **results["reading"],
+                timestamp_ms=int(datetime.now(timezone.utc).timestamp() * 1000)
+            ),
+            score=results["final_score"],
+            breakdown=ScoreBreakdown(
+                base_mlp_score=results["base_score"],
+                voc_penalty=results["voc_penalty"],
+                pm25_penalty=results["pm25_penalty"],
+                final_score=results["final_score"]
+            ),
+            last_updated=datetime.now(timezone.utc),
+            connected=True
+        )
     else:
         # Real Serial Logic (Simplified to keep main.py clean)
         # In a real app, this would use the serial_reader.py logic
@@ -206,32 +232,51 @@ async def analyze_room():
 
 @app.post("/api/sensor-data")
 async def process_sensor_data(payload: SensorDataPayload):
-    global latest_status
-    
     try:
-        results = predict_score(payload.model_dump())
-        if "error" in results:
-            raise HTTPException(status_code=503, detail=results["error"])
-
-        # Update global state
-        latest_status = RoomStatus(
-            reading=SensorReading(
-                **results["reading"],
-                timestamp_ms=int(datetime.now(timezone.utc).timestamp() * 1000)
-            ),
-            score=results["final_score"],
-            last_updated=datetime.now(timezone.utc),
-            connected=True
-        )
-
+        update_status_from_dict(payload.model_dump())
         return {
             "status": "success",
-            "base_mlp_score": round(results["base_score"], 2),
-            "final_iaq_score": results["final_score"]
+            "base_mlp_score": round(latest_status.breakdown.base_mlp_score, 2),
+            "final_iaq_score": latest_status.score
         }
     except Exception as e:
         print(f"Prediction Error: {e}")
         raise HTTPException(status_code=500, detail="Error during score computation.")
+
+@app.get("/api/scenarios")
+async def get_scenarios():
+    """Returns available simulation presets."""
+    return [
+        {"id": s["id"], "name": s["name"]} 
+        for s in SIMULATION_SCENARIOS
+    ]
+
+class ScenarioSelect(BaseModel):
+    id: str
+
+@app.post("/api/scenarios/select")
+async def select_scenario(selection: ScenarioSelect):
+    """Manually triggers a specific scenario and pauses auto-cycling."""
+    global AUTO_CYCLE, MANUAL_SCENARIO_EXPIRY
+    
+    scenario = next((s for s in SIMULATION_SCENARIOS if s["id"] == selection.id), None)
+    if not scenario:
+        raise HTTPException(status_code=404, detail="Scenario not found")
+    
+    # Prepare data
+    payload = {
+        "humidity": scenario["data"][0], "pressure": scenario["data"][1], "light": scenario["data"][2], "temperature": scenario["data"][3],
+        "sound_high": scenario["data"][4], "sound_mid": scenario["data"][5], "sound_low": scenario["data"][6], "sound_amp": scenario["data"][7],
+        "vocs": scenario["vocs"], "particulates": scenario["particulates"]
+    }
+    
+    update_status_from_dict(payload)
+    
+    # Pause auto-cycle for 60 seconds
+    AUTO_CYCLE = False
+    MANUAL_SCENARIO_EXPIRY = datetime.now(timezone.utc).timestamp() + 60
+    
+    return {"status": "success", "scenario": scenario["name"], "resumes_in": 60}
 
 @app.get("/health")
 async def health():

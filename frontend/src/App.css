@@ -56,9 +56,15 @@
 /* ── Top row: score + analysis side by side ── */
 .app__top-row {
   display: grid;
-  grid-template-columns: 320px 1fr;
-  gap: 1.25rem;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
   align-items: start;
+}
+
+.app__column {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
 }
 
 @media (max-width: 768px) {

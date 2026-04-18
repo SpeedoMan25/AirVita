@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react'
 import ScoreGauge from './components/ScoreGauge'
 import SensorGrid from './components/SensorCard'
 import AISummary from './components/AISummary'
+import ScenarioControls from './components/ScenarioControls'
+import CalculationMath from './components/CalculationMath'
 import './App.css'
 
 const API_BASE = import.meta.env.VITE_API_URL || ''
@@ -11,6 +13,10 @@ export default function App() {
   const [status, setStatus] = useState(null)
   const [error, setError] = useState(null)
   const [lastFetch, setLastFetch] = useState(null)
+
+  // Scenarios state
+  const [scenarios, setScenarios] = useState([])
+  const [manualScenarioId, setManualScenarioId] = useState(null)
 
   // AI analysis state
   const [analysis, setAnalysis] = useState({ summary: '', flags: [] })
@@ -30,6 +36,32 @@ export default function App() {
     }
   }, [])
 
+  const fetchScenarios = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/scenarios`)
+      if (res.ok) {
+        const data = await res.json()
+        setScenarios(data)
+      }
+    } catch (err) {
+      console.error('Failed to fetch scenarios:', err)
+    }
+  }, [])
+
+  const selectScenario = async (id) => {
+    try {
+      setManualScenarioId(id)
+      await fetch(`${API_BASE}/api/scenarios/select`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+      })
+      fetchStatus() // Immediate update
+    } catch (err) {
+      console.error('Failed to select scenario:', err)
+    }
+  }
+
   const fetchAnalysis = useCallback(async () => {
     setAnalysisLoading(true)
     setAnalysisError(null)
@@ -45,15 +77,17 @@ export default function App() {
     }
   }, [])
 
-  // Poll the backend every POLL_INTERVAL_MS
+  // Initial fetch
   useEffect(() => {
     fetchStatus()
+    fetchScenarios()
     const interval = setInterval(fetchStatus, POLL_INTERVAL_MS)
     return () => clearInterval(interval)
-  }, [fetchStatus])
+  }, [fetchStatus, fetchScenarios])
 
   const score = status?.score ?? 0
   const reading = status?.reading ?? null
+  const breakdown = status?.breakdown ?? null
   const connected = status?.connected ?? false
 
   return (
@@ -63,7 +97,7 @@ export default function App() {
         <div className="app__logo">
           <h1 className="app__title">RoomPulse</h1>
         </div>
-        <p className="app__subtitle">Environment Monitor</p>
+        <p className="app__subtitle">Neural IAQ Monitoring</p>
       </header>
 
       {/* Error banner */}
@@ -75,23 +109,33 @@ export default function App() {
 
       {/* Main Dashboard */}
       <main className="app__main">
-        {/* Top row: Score gauge + AI analysis side by side */}
+        {/* Top row: Score gauge + AI analysis + Math side by side */}
         <div className="app__top-row">
-          <ScoreGauge score={score} connected={connected} />
-          <AISummary
-            summary={analysis.summary}
-            flags={analysis.flags}
-            loading={analysisLoading}
-            error={analysisError}
-            onRefresh={fetchAnalysis}
-          />
+          <div className="app__column">
+             <ScoreGauge score={score} connected={connected} />
+             <CalculationMath breakdown={breakdown} />
+          </div>
+          
+          <div className="app__column">
+            <AISummary
+              summary={analysis.summary}
+              flags={analysis.flags}
+              loading={analysisLoading}
+              error={analysisError}
+              onRefresh={fetchAnalysis}
+            />
+            <ScenarioControls 
+              scenarios={scenarios} 
+              activeId={manualScenarioId}
+              onSelect={selectScenario}
+            />
+          </div>
         </div>
 
         {/* Sensor readings section */}
         <div>
           <div className="app__section-header">
-            <h2 className="app__section-title">Sensors</h2>
-            <span className="app__section-count">7</span>
+            <h2 className="app__section-title">Real-Time Sensors</h2>
           </div>
           <SensorGrid reading={reading} />
         </div>
@@ -99,10 +143,10 @@ export default function App() {
 
       {/* Footer */}
       <footer className="app__footer">
-        <span>RoomPulse v1.0</span>
+        <span>RoomPulse v1.1 • Neural Engine</span>
         {lastFetch && (
           <span className="app__last-update">
-            Updated {lastFetch.toLocaleTimeString()}
+            Live Stream: {lastFetch.toLocaleTimeString()}
           </span>
         )}
       </footer>
