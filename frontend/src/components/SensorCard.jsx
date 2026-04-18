@@ -64,6 +64,36 @@ const Icons = {
       <path d="m6 6 12 12" />
     </svg>
   ),
+  health: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+    </svg>
+  ),
+  sleep: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+    </svg>
+  ),
+  study: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z" />
+    </svg>
+  ),
+  work: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+    </svg>
+  ),
+  fun: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3v1" /><path d="M12 20v1" />
+      <path d="M3 12h1" /><path d="M20 12h1" />
+      <path d="m18.364 5.636-.707.707" /><path d="m6.343 17.657-.707.707" />
+      <path d="m5.636 5.636.707.707" /><path d="m17.657 17.657.707.707" />
+    </svg>
+  ),
 }
 
 /* ─────────────────────────────────────────
@@ -165,17 +195,112 @@ const SENSOR_META = {
       { label: 'Poor', min: 1000, color: '#d96a5c' },
     ]
   },
+  health: {
+    label: 'Room Health', unit: '', icon: 'health',
+    description: 'Overall environment balance. Combines IAQ (VOC/Particulates) with core comfort metrics (Temp/Humidity) via our Hybrid Neural Engine.',
+    min: 0, max: 99,
+    palette: { bg: '#f0f9f1', accent: '#4aab7a', iconBg: '#e2f2e7' },
+    getStatus: v => v < 40 ? 'Poor' : v < 60 ? 'Fair' : v < 80 ? 'Good' : 'Excellent',
+    ranges: [
+      { label: 'Poor', max: 40, color: '#d96a5c' },
+      { label: 'Fair', min: 40, max: 60, color: '#d9a74a' },
+      { label: 'Good', min: 60, max: 80, color: '#4aab7a' },
+      { label: 'Excellent', min: 80, color: '#2d6a4f' },
+    ]
+  },
+  sleep: {
+    label: 'Sleep Quality', unit: '', icon: 'sleep',
+    description: 'Measures restorative potential. Prioritizes low light (< 10 lux), cool temperatures, and minimal noise for deep REM cycles.',
+    min: 0, max: 99,
+    palette: { bg: '#f1f0f9', accent: '#667eea', iconBg: '#e7e6f2' },
+    getStatus: v => v < 30 ? 'Poor' : v < 60 ? 'Fair' : v < 85 ? 'Good' : 'Perfect',
+    ranges: [
+      { label: 'Poor', max: 30, color: '#d96a5c' },
+      { label: 'Fair', min: 30, max: 60, color: '#d9a74a' },
+      { label: 'Good', min: 60, max: 85, color: '#667eea' },
+      { label: 'Perfect', min: 85, color: '#4a36a8' },
+    ]
+  },
+  study: {
+    label: 'Study Focus', unit: '', icon: 'study',
+    description: 'Optimized for cognitive load. High light levels (> 400 lux) and fresh air (low VOCs) help maintain alertness and retention.',
+    min: 0, max: 99,
+    palette: { bg: '#fdf9f0', accent: '#d9a74a', iconBg: '#f9f2e2' },
+    getStatus: v => v < 40 ? 'Poor' : v < 70 ? 'Moderate' : 'Focused',
+    ranges: [
+      { label: 'Poor', max: 40, color: '#d96a5c' },
+      { label: 'Moderate', min: 40, max: 70, color: '#d9a74a' },
+      { label: 'Focused', min: 70, color: '#4aab7a' },
+    ]
+  },
+  work: {
+    label: 'Work Flow', unit: '', icon: 'work',
+    description: 'Balanced for sustained productivity. Keeps CO2/VOCs low to prevent brain fog while maintaining a comfortable thermal range.',
+    min: 0, max: 99,
+    palette: { bg: '#f0f7f9', accent: '#3272d9', iconBg: '#e2f0f2' },
+    getStatus: v => v < 40 ? 'Sluggish' : v < 70 ? 'Steady' : 'Flow State',
+    ranges: [
+      { label: 'Sluggish', max: 40, color: '#d96a5c' },
+      { label: 'Steady', min: 40, max: 70, color: '#3272d9' },
+      { label: 'Flow State', min: 70, color: '#4aab7a' },
+    ]
+  },
+  fun: {
+    label: 'Social Energy', unit: '', icon: 'fun',
+    description: 'The "Sparkle" factor. Measured by vibrant lighting and moderate noise levels that suit a lively social environment.',
+    min: 0, max: 99,
+    palette: { bg: '#f9f0f4', accent: '#fa709a', iconBg: '#f2e2e7' },
+    getStatus: v => v < 40 ? 'Dull' : v < 70 ? 'Pleasant' : 'Vibrant',
+    ranges: [
+      { label: 'Dull', max: 40, color: '#9a948c' },
+      { label: 'Pleasant', min: 40, max: 70, color: '#fa709a' },
+      { label: 'Vibrant', min: 70, color: '#ff0080' },
+    ]
+  },
+}
+
+/* ─────────────────────────────────────────
+   Unit Conversion Helpers
+   ───────────────────────────────────────── */
+
+const CONVERSIONS = {
+  temperature_c: {
+    imperial: { unit: '°F', convert: v => (v * 9/5) + 32, label: 'Temperature' },
+    metric: { unit: '°C', convert: v => v, label: 'Temperature' }
+  },
+  pressure_hpa: {
+    imperial: { unit: 'inHg', convert: v => v * 0.02953, label: 'Pressure' },
+    metric: { unit: 'hPa', convert: v => v, label: 'Pressure' }
+  }
+}
+
+function getConvertedValue(key, value, system) {
+  if (value === null || value === undefined) return value
+  if (CONVERSIONS[key]) {
+    return CONVERSIONS[key][system].convert(value)
+  }
+  return value
+}
+
+function getConvertedUnit(key, system) {
+  if (CONVERSIONS[key]) {
+    return CONVERSIONS[key][system].unit
+  }
+  return SENSOR_META[key].unit
 }
 
 /* ─────────────────────────────────────────
    Modal Component
    ───────────────────────────────────────── */
 
-export function SensorInfoDrawer({ meta, value, onClose }) {
+export function SensorInfoDrawer({ meta, value, onClose, unitSystem }) {
   if (!meta) return null
 
-  const displayVal = (value === null || value === undefined) ? '—' : typeof value === 'number' ? value.toFixed(1) : value
+  const sensorKey = Object.keys(SENSOR_META).find(k => SENSOR_META[k].label === meta.label)
+  const displayValRaw = getConvertedValue(sensorKey, value, unitSystem)
+  const displayVal = (displayValRaw === null || displayValRaw === undefined) ? '—' : typeof displayValRaw === 'number' ? displayValRaw.toFixed(1) : displayValRaw
   const statusWord = (value === null || value === undefined) ? 'Unknown' : meta.getStatus(value)
+  const unit = getConvertedUnit(sensorKey, unitSystem)
 
   return (
     <div className="env-modal-backdrop" onClick={onClose}>
@@ -190,7 +315,7 @@ export function SensorInfoDrawer({ meta, value, onClose }) {
           </div>
           <div>
             <h3>{meta.label} Analysis</h3>
-            <p className="env-modal__subtitle">Currently sitting at <span style={{ color: meta.palette.accent, fontWeight: 700 }}>{displayVal}{meta.unit}</span> ({statusWord})</p>
+            <p className="env-modal__subtitle">Currently sitting at <span style={{ color: meta.palette.accent, fontWeight: 700 }}>{displayVal}{unit}</span> ({statusWord})</p>
           </div>
         </div>
 
@@ -198,18 +323,22 @@ export function SensorInfoDrawer({ meta, value, onClose }) {
           <p className="env-modal__desc">{meta.description}</p>
           
           <div className="env-modal__ranges">
-            <h4 className="env-modal__section-title">Reference Ranges</h4>
-            {meta.ranges.map((r, i) => (
-              <div key={i} className="env-modal__range-item">
-                <div className="env-modal__range-color" style={{ background: r.color }} />
-                <span className="env-modal__range-label">{r.label}</span>
-                <span className="env-modal__range-val">
-                  {r.min !== undefined && r.max !== undefined ? `${r.min} - ${r.max}` : 
-                   r.min !== undefined ? `> ${r.min}` : 
-                   `< ${r.max}`} {meta.unit}
-                </span>
-              </div>
-            ))}
+            <h4 className="env-modal__section-title">Reference Ranges ({unitSystem === 'metric' ? 'Metric' : 'Imperial'})</h4>
+            {meta.ranges.map((r, i) => {
+              const rMin = getConvertedValue(sensorKey, r.min, unitSystem)
+              const rMax = getConvertedValue(sensorKey, r.max, unitSystem)
+              return (
+                <div key={i} className="env-modal__range-item">
+                  <div className="env-modal__range-color" style={{ background: r.color }} />
+                  <span className="env-modal__range-label">{r.label}</span>
+                  <span className="env-modal__range-val">
+                    {rMin !== undefined && rMax !== undefined ? `${rMin.toFixed(rMin > 100 ? 0 : 1)} - ${rMax.toFixed(rMax > 100 ? 0 : 1)}` : 
+                     rMin !== undefined ? `> ${rMin.toFixed(rMin > 100 ? 0 : 1)}` : 
+                     `< ${rMax.toFixed(rMax > 100 ? 0 : 1)}`} {unit}
+                  </span>
+                </div>
+              )
+            })}
           </div>
         </div>
       </div>
@@ -221,13 +350,15 @@ export function SensorInfoDrawer({ meta, value, onClose }) {
    SensorCard
    ───────────────────────────────────────── */
 
-function SensorCard({ sensorKey, value, onInfoClick }) {
+function SensorCard({ sensorKey, value, onInfoClick, unitSystem }) {
   const meta = SENSOR_META[sensorKey]
   if (!meta) return null
 
   const isLoading = value === null || value === undefined
-  const displayVal = isLoading ? '—' : typeof value === 'number' ? value.toFixed(1) : value
+  const displayValRaw = getConvertedValue(sensorKey, value, unitSystem)
+  const displayVal = isLoading ? '—' : typeof displayValRaw === 'number' ? displayValRaw.toFixed(1) : displayValRaw
   const statusWord = isLoading ? '' : meta.getStatus(value)
+  const unit = getConvertedUnit(sensorKey, unitSystem)
 
   const barPercent = isLoading
     ? 0
@@ -258,7 +389,7 @@ function SensorCard({ sensorKey, value, onInfoClick }) {
 
       <div className="env-card__data">
         <span className="env-card__value">{displayVal}</span>
-        {!isLoading && <span className="env-card__unit">{meta.unit}</span>}
+        {!isLoading && <span className="env-card__unit">{unit}</span>}
       </div>
 
       <div className="env-card__bar">
@@ -272,7 +403,7 @@ function SensorCard({ sensorKey, value, onInfoClick }) {
    SensorGrid
    ───────────────────────────────────────── */
 
-export default function SensorGrid({ reading, onInfoClick }) {
+export default function SensorGrid({ reading, onInfoClick, unitSystem }) {
   const keys = Object.keys(SENSOR_META)
   return (
     <div className="env-grid">
@@ -282,10 +413,11 @@ export default function SensorGrid({ reading, onInfoClick }) {
           sensorKey={key} 
           value={reading ? reading[key] : null} 
           onInfoClick={onInfoClick}
+          unitSystem={unitSystem}
         />
       ))}
     </div>
   )
 }
 
-export { SensorCard, SENSOR_META }
+export { SensorCard, SENSOR_META, Icons }

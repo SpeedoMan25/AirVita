@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>RoomPulse Scanner</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4facfe;
+            --accent: #00f2fe;
+            --safe-bottom: env(safe-area-inset-bottom, 20px);
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            color: #fff;
+            font-family: 'Outfit', sans-serif;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        #app-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 1;
+        }
+
+        /* Scan Overlay Effect */
+        #scan-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(to bottom, transparent, var(--accent), transparent);
+            box-shadow: 0 0 20px var(--accent);
+            z-index: 2;
+            animation: scan 3s linear infinite;
+            opacity: 0.4;
+        }
+
+        @keyframes scan {
+            0% { top: 0; }
+            50% { top: 100%; }
+            100% { top: 0; }
+        }
+
+        /* Result Card */
+        #result-card {
+            position: absolute;
+            bottom: calc(var(--safe-bottom) + 30px);
+            left: 20px;
+            right: 20px;
+            background: rgba(15, 15, 20, 0.7);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border-radius: 30px;
+            padding: 24px;
+            z-index: 10;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        #label-container {
+            width: 100%;
+            text-align: center;
+        }
+
+        #room-type {
+            font-size: 2rem;
+            font-weight: 700;
+            margin: 0;
+            letter-spacing: -0.5px;
+            background: linear-gradient(90deg, #fff, #bbb);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        #sub-label {
+            font-size: 0.9rem;
+            opacity: 0.6;
+            margin-top: 4px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        /* Visualizer Confidence */
+        #confidence-pill {
+            margin-top: 16px;
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #confidence-fill {
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            box-shadow: 0 0 15px var(--primary);
+            transition: width 0.5s ease;
+        }
+
+        #error-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 100;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .btn {
+            background: var(--primary);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 12px;
+            text-decoration: none;
+            margin-top: 20px;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app-container">
+        <video id="webcam" autoplay playsinline muted></video>
+        <div id="scan-line"></div>
+
+        <div id="result-card">
+            <div id="label-container">
+                <p id="sub-label">Current Location</p>
+                <h1 id="room-type">Initializing...</h1>
+            </div>
+            <div id="confidence-pill">
+                <div id="confidence-fill"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="error-overlay">
+        <h2 id="error-text">Camera Access Required</h2>
+        <p>This is a real-time scanner. Please allow camera permissions and ensure you are using HTTPS.</p>
+        <a href="javascript:location.reload()" class="btn">Reload Page</a>
+    </div>
+
+    <canvas id="buffer" style="display:none;"></canvas>
+
+    <script>
+        const video = document.getElementById('webcam');
+        const canvas = document.getElementById('buffer');
+        const ctx = canvas.getContext('2d');
+        const roomType = document.getElementById('room-type');
+        const confFill = document.getElementById('confidence-fill');
+        const errorOverlay = document.getElementById('error-overlay');
+
+        async function start() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 640 } },
+                    audio: false
+                });
+                video.srcObject = stream;
+                video.onloadedmetadata = () => {
+                    canvas.width = 480;
+                    canvas.height = 480;
+                    loop();
+                };
+            } catch (e) {
+                console.error(e);
+                errorOverlay.style.display = 'flex';
+            }
+        }
+
+        async function loop() {
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
+
+            try {
+                const res = await fetch('/upload', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: dataUrl })
+                });
+                const data = await res.json();
+                
+                if (data.room) {
+                    roomType.innerText = data.room;
+                    const conf = (data.confidence * 100) || 0;
+                    confFill.style.width = conf + '%';
+                }
+            } catch (e) {
+                console.error("Upload failed", e);
+            }
+
+            setTimeout(loop, 400);
+        }
+
+        start();
+    </script>
+</body>
+</html>

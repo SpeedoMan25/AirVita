@@ -1,0 +1,138 @@
+[
+  {
+    "id": "perfect-sleep",
+    "name": "Perfect Sleeping Sanctuary",
+    "inputs": {
+      "temperature": 18.0,
+      "humidity": 45.0,
+      "light": 0.0,
+      "noise": 25.0,
+      "pressure": 1013.0,
+      "vocs": 20.0,
+      "particulates": 2.0
+    },
+    "expected": {
+      "health": 83,
+      "sleep": 99
+    }
+  },
+  {
+    "id": "office",
+    "name": "Productive Office",
+    "inputs": {
+      "temperature": 22.0,
+      "humidity": 40.0,
+      "light": 500.0,
+      "noise": 40.0,
+      "pressure": 1013.0,
+      "vocs": 100.0,
+      "particulates": 5.0
+    },
+    "expected": {
+      "health": 99,
+      "sleep": 56
+    }
+  },
+  {
+    "id": "wildfire",
+    "name": "California Wildfire",
+    "inputs": {
+      "temperature": 32.0,
+      "humidity": 15.0,
+      "light": 200.0,
+      "noise": 40.0,
+      "pressure": 1005.0,
+      "vocs": 800.0,
+      "particulates": 250.0
+    },
+    "expected": {
+      "health": 48,
+      "sleep": 21
+    }
+  },
+  {
+    "id": "party",
+    "name": "Loud Midnight Party",
+    "inputs": {
+      "temperature": 26.0,
+      "humidity": 55.0,
+      "light": 800.0,
+      "noise": 90.0,
+      "pressure": 1010.0,
+      "vocs": 400.0,
+      "particulates": 20.0
+    },
+    "expected": {
+      "health": 73,
+      "sleep": 24
+    }
+  },
+  {
+    "id": "basement",
+    "name": "Stuffy Basement",
+    "inputs": {
+      "temperature": 18.0,
+      "humidity": 85.0,
+      "light": 50.0,
+      "noise": 30.0,
+      "pressure": 1015.0,
+      "vocs": 1200.0,
+      "particulates": 10.0
+    },
+    "expected": {
+      "health": 65,
+      "sleep": 55
+    }
+  },
+  {
+    "id": "mountain",
+    "name": "Everest Peak",
+    "inputs": {
+      "temperature": 5.0,
+      "humidity": 30.0,
+      "light": 1000.0,
+      "noise": 30.0,
+      "pressure": 850.0,
+      "vocs": 10.0,
+      "particulates": 2.0
+    },
+    "expected": {
+      "health": 75,
+      "sleep": 40
+    }
+  },
+  {
+    "id": "storm",
+    "name": "T-Storm",
+    "inputs": {
+      "temperature": 24.0,
+      "humidity": 95.0,
+      "light": 50.0,
+      "noise": 75.0,
+      "pressure": 980.0,
+      "vocs": 100.0,
+      "particulates": 15.0
+    },
+    "expected": {
+      "health": 71,
+      "sleep": 24
+    }
+  },
+  {
+    "id": "zen",
+    "name": "Zen Garden",
+    "inputs": {
+      "temperature": 19.0,
+      "humidity": 40.0,
+      "light": 300.0,
+      "noise": 25.0,
+      "pressure": 1015.0,
+      "vocs": 20.0,
+      "particulates": 2.0
+    },
+    "expected": {
+      "health": 96,
+      "sleep": 70
+    }
+  }
+]

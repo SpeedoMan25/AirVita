@@ -1,73 +1,115 @@
 import React, { useMemo } from 'react'
+import { Icons } from './SensorCard'
 import './ScoreGauge.css'
 
-function getScoreColor(score) {
-  if (score <= 0) return '#ccc'
-  if (score <= 30) return '#d96a5c'
-  if (score <= 50) return '#d9a74a'
-  if (score <= 70) return '#b8b048'
-  if (score <= 85) return '#6aab6a'
-  return '#4aab7a'
-}
+const CONFIGS = {
+  health: {
+    title: 'Room Health',
+    gradient: ['#d96a5c', '#d9a74a', '#4aab7a'],
+    getWord: (s) => {
+      if (s <= 20) return 'Poor';
+      if (s <= 40) return 'Fair';
+      if (s <= 60) return 'Moderate';
+      if (s <= 75) return 'Good';
+      return 'Excellent';
+    }
+  },
+  sleep: {
+    title: 'Sleep quality',
+    gradient: ['#ff7eb3', '#a18cd1', '#667eea'],
+    getWord: (s) => {
+      if (s <= 30) return 'Poor';
+      if (s <= 50) return 'Sub-optimal';
+      if (s <= 70) return 'Acceptable';
+      if (s <= 85) return 'Good Quality';
+      return 'Perfect';
+    }
+  },
+  study: {
+    title: 'Study Focus',
+    gradient: ['#f6d365', '#fda085', '#f093fb'],
+    getWord: (s) => {
+      if (s <= 40) return 'Distracted';
+      if (s <= 60) return 'Moderate';
+      if (s <= 80) return 'Focused';
+      return 'Deep Focus';
+    }
+  },
+  work: {
+    title: 'Work Flow',
+    gradient: ['#84fab0', '#8fd3f4', '#209cff'],
+    getWord: (s) => {
+      if (s <= 40) return 'Stagnant';
+      if (s <= 65) return 'Efficient';
+      return 'Peak Flow';
+    }
+  },
+  fun: {
+    title: 'Social/Fun',
+    gradient: ['#fa709a', '#fee140', '#ff0080'],
+    getWord: (s) => {
+      if (s <= 40) return 'Dull';
+      if (s <= 70) return 'Pleasant';
+      return 'Vibrant';
+    }
+  }
+};
 
-function getStatusWord(score) {
-  if (score <= 0) return 'Waiting...'
-  if (score <= 20) return 'Poor'
-  if (score <= 40) return 'Fair'
-  if (score <= 60) return 'Moderate'
-  if (score <= 75) return 'Good'
-  if (score <= 90) return 'Very Good'
-  return 'Excellent'
-}
+export default function ScoreGauge({ type = 'health', score = 0, isActive = false, onClick, onInfoClick }) {
+  const config = CONFIGS[type] || CONFIGS.health;
+  const word = useMemo(() => config.getWord(score), [score, config]);
 
-function getEmoji(score) {
-  if (score <= 0) return '🏠'
-  if (score <= 40) return '😕'
-  if (score <= 60) return '🙂'
-  if (score <= 80) return '😊'
-  return '🌿'
-}
+  const radius = 90;
+  const circumference = Math.PI * radius;
+  const progress = score > 0 ? (score / 99) * circumference : 0;
+  const dashoffset = circumference - progress;
 
-export default function ScoreGauge({ score = 0 }) {
-  const color = useMemo(() => getScoreColor(score), [score])
-  const word = useMemo(() => getStatusWord(score), [score])
-  const emoji = useMemo(() => getEmoji(score), [score])
-
-  const radius = 90
-  const circumference = Math.PI * radius
-  const progress = score > 0 ? (score / 99) * circumference : 0
-  const dashoffset = circumference - progress
-
-  const arcPath = `M 20,110 A ${radius},${radius} 0 0 1 200,110`
+  const arcPath = `M 20,110 A ${radius},${radius} 0 0 1 200,110`;
+  const gradId = `grad-${type}`;
 
   return (
-    <div className="score-card" id="score-gauge">
+    <div 
+      className={`score-card score-card--${type} ${isActive ? 'score-card--active' : ''}`} 
+      id={`${type}-gauge`}
+      onClick={onClick}
+      style={{ cursor: 'pointer', position: 'relative' }}
+    >
+      <button 
+        className="env-card__info-btn" 
+        onClick={(e) => {
+          e.stopPropagation();
+          onInfoClick(type);
+        }}
+        title={`More about ${config.title}`}
+      >
+        {Icons.info}
+      </button>
+
       <div className="score-card__top">
-        <span className="score-card__emoji">{emoji}</span>
-        <span className="score-card__heading">Room Health</span>
+        <span className="score-card__heading">{config.title}</span>
       </div>
 
       <div className="score-card__gauge">
         <svg className="score-card__svg" viewBox="0 0 220 125" aria-hidden="true">
           <defs>
-            <linearGradient id="scoreArc" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#d96a5c" />
-              <stop offset="45%" stopColor="#d9a74a" />
-              <stop offset="100%" stopColor="#4aab7a" />
+            <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="0%">
+              {config.gradient.map((color, i) => (
+                <stop key={i} offset={`${(i / (config.gradient.length - 1)) * 100}%`} stopColor={color} />
+              ))}
             </linearGradient>
           </defs>
           <path className="score-card__track" d={arcPath} />
           <path
             className="score-card__fill"
             d={arcPath}
-            stroke="url(#scoreArc)"
+            stroke={`url(#${gradId})`}
             strokeDasharray={circumference}
             strokeDashoffset={dashoffset}
           />
         </svg>
 
         <div className="score-card__number-wrap">
-          <span className="score-card__number" style={{ color }}>
+          <span className="score-card__number">
             {score > 0 ? score : '—'}
           </span>
           <span className="score-card__of">/99</span>
@@ -75,17 +117,8 @@ export default function ScoreGauge({ score = 0 }) {
       </div>
 
       <div className="score-card__bottom">
-        <span className="score-card__word" style={{ color }}>{word}</span>
-        <span className="score-card__desc">
-          {score > 75
-            ? 'Your room feels great right now.'
-            : score > 50
-            ? 'Room conditions are acceptable.'
-            : score > 0
-            ? 'Some readings need attention.'
-            : 'Connecting to sensors...'}
-        </span>
+        <span className="score-card__word">{word}</span>
       </div>
     </div>
-  )
+  );
 }

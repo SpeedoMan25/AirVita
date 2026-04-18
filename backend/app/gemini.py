@@ -27,12 +27,12 @@ Reference standards:
 - PM2.5: WHO 2021 guideline — annual mean < 5 µg/m³, 24-h mean < 15 µg/m³; > 35 µg/m³ is unhealthy
 - VOCs: EPA — total VOC concern starts ~500 ppb; > 1000 ppb indicates poor ventilation
 - Noise: WHO Environmental Noise Guidelines — < 35 dB for sleep, < 55 dB for daytime activity
-- Light: IESNA — 300–500 lux for general office work; < 100 lux causes eye strain
+- Light: IESNA — 300–500 lux for general office work; < 5 Lux for sleep
 - Pressure: Normal atmospheric 1013 hPa; significant deviations affect comfort and weather
 
 Respond ONLY with a valid JSON object in this exact format (no extra text, no markdown fences):
 {
-  "summary": "A 2-3 sentence friendly, encouraging summary of the current room environment.",
+  "summary": "A 2-3 sentence friendly, encouraging summary of the current room environment and its suitability for both daytime activities and sleep.",
   "flags": ["Short concern #1", "Short concern #2"]
 }
 
@@ -41,7 +41,7 @@ Keep flags concise (under 12 words each).
 """.strip()
 
 
-def generate_analysis(reading: dict, score: int) -> dict:
+def generate_analysis(reading: dict, scores: dict) -> dict:
     """
     Call Gemini 2.0 Flash with current sensor readings and return
     a dict with keys: summary (str), flags (list[str]).
@@ -66,7 +66,11 @@ def generate_analysis(reading: dict, score: int) -> dict:
             f"- Air Pressure: {reading.get('pressure_hpa', 'N/A')} hPa",
             f"- PM2.5:        {reading.get('pm25_ugm3', 'N/A')} µg/m³",
             f"- VOCs:         {reading.get('voc_ppb', 'N/A')} ppb",
-            f"- Room Health Score: {score}/99",
+            f"- Room Health Score: {scores.get('health', 'N/A')}/99",
+            f"- Sleep Conditions Score: {scores.get('sleep', 'N/A')}/99",
+            f"- Study Conditions Score: {scores.get('study', 'N/A')}/99",
+            f"- Work Conditions Score: {scores.get('work', 'N/A')}/99",
+            f"- Fun/Social Conditions Score: {scores.get('fun', 'N/A')}/99",
         ])
 
         prompt = f"{_RESEARCH_CONTEXT}\n\nCurrent Readings:\n{sensor_lines}"

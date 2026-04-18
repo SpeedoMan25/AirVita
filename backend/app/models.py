@@ -3,7 +3,7 @@ Pydantic models for sensor data and API responses.
 """
 
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, Dict
 from datetime import datetime
 
 
@@ -32,6 +32,11 @@ class RoomStatus(BaseModel):
     """Full API response with sensor data + computed score."""
     reading: Optional[SensorReading] = None
     score: int = Field(0, ge=0, le=99, description="Room Health Score (1-99, 0 = no data)")
+    sleep_score: int = Field(0, ge=0, le=99, description="Sleeping Conditions Score (1-99, 0 = no data)")
+    study_score: int = Field(0, ge=0, le=99, description="Study Conditions Score (1-99, 0 = no data)")
+    work_score: int = Field(0, ge=0, le=99, description="Work Conditions Score (1-99, 0 = no data)")
+    fun_score: int = Field(0, ge=0, le=99, description="Fun/Social Conditions Score (1-99, 0 = no data)")
     breakdown: Optional[ScoreBreakdown] = None
+    activity_breakdowns: Dict[str, list] = Field(default_factory=dict, description="Detailed math for specialized activities")
     last_updated: Optional[datetime] = None
     connected: bool = Field(False, description="Whether the serial connection is active")
