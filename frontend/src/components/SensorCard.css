@@ -1,116 +1,85 @@
 /* ─────────────────────────────────────────────
-   SensorCard — Individual sensor reading tile
+   SensorCard — Sensor reading tiles
    ───────────────────────────────────────────── */
 
 .sensor-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: var(--space-lg);
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.75rem;
   width: 100%;
-  max-width: 900px;
-  animation: fadeInUp 0.8s ease-out 0.2s both;
+  animation: slideUp 0.5s ease 0.15s both;
 }
 
 .sensor-card {
-  position: relative;
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  padding: var(--space-lg);
+  padding: 1rem 1.15rem;
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow: hidden;
-  backdrop-filter: blur(12px);
-}
-
-.sensor-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, var(--card-accent, var(--accent-indigo)), transparent);
-  opacity: 0;
-  transition: opacity 0.3s ease;
+  gap: 0.35rem;
+  transition: border-color 0.15s ease;
 }
 
 .sensor-card:hover {
-  background: var(--bg-card-hover);
-  border-color: var(--border-glow);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-card);
-}
-
-.sensor-card:hover::before {
-  opacity: 1;
+  border-color: var(--border-hover);
 }
 
 .sensor-card__icon {
-  font-size: 1.6rem;
-  width: 42px;
-  height: 42px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.04);
-  border-radius: var(--radius-sm);
+  font-size: 1.2rem;
+  margin-bottom: 0.15rem;
 }
 
 .sensor-card__label {
-  font-size: 0.75rem;
+  font-size: 0.65rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 1.5px;
+  letter-spacing: 1.2px;
   color: var(--text-muted);
 }
 
 .sensor-card__value-row {
   display: flex;
   align-items: baseline;
-  gap: var(--space-xs);
+  gap: 4px;
 }
 
 .sensor-card__value {
-  font-size: 2rem;
-  font-weight: 700;
+  font-family: var(--font-mono);
+  font-size: 1.5rem;
+  font-weight: 400;
   line-height: 1;
   color: var(--text-primary);
-  transition: color 0.3s ease;
-  font-variant-numeric: tabular-nums;
 }
 
 .sensor-card__unit {
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: var(--text-muted);
 }
 
-/* Level bar at bottom */
+/* Level bar */
 .sensor-card__bar {
-  height: 4px;
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.06);
-  margin-top: auto;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--border-subtle);
+  margin-top: 0.5rem;
   overflow: hidden;
 }
 
 .sensor-card__bar-fill {
   height: 100%;
-  border-radius: 2px;
-  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1),
-              background 0.6s ease;
+  border-radius: 1px;
+  transition: width 0.8s ease-out;
 }
 
-/* Skeleton loading state */
+/* Skeleton */
 .sensor-card--loading .sensor-card__value {
-  background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 75%);
+  background: linear-gradient(90deg, var(--border-subtle) 25%, var(--bg-card-hover) 50%, var(--border-subtle) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
-  border-radius: 4px;
+  border-radius: 3px;
   color: transparent;
-  min-width: 80px;
-  min-height: 2rem;
+  min-width: 60px;
+  min-height: 1.5rem;
 }

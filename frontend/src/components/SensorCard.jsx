@@ -12,7 +12,7 @@ const SENSOR_META = {
     icon: '🌡️',
     min: 10,
     max: 40,
-    accent: '#f97316',
+    accent: '#c47a5f',
   },
   humidity_pct: {
     label: 'Humidity',
@@ -20,7 +20,7 @@ const SENSOR_META = {
     icon: '💧',
     min: 0,
     max: 100,
-    accent: '#3b82f6',
+    accent: '#5b8fd9',
   },
   light_lux: {
     label: 'Light Level',
@@ -28,7 +28,7 @@ const SENSOR_META = {
     icon: '☀️',
     min: 0,
     max: 1000,
-    accent: '#eab308',
+    accent: '#d9a74a',
   },
   noise_db: {
     label: 'Noise Level',
@@ -36,7 +36,7 @@ const SENSOR_META = {
     icon: '🔊',
     min: 0,
     max: 100,
-    accent: '#a855f7',
+    accent: '#8a75c0',
   },
   pressure_hpa: {
     label: 'Air Pressure',
@@ -44,7 +44,7 @@ const SENSOR_META = {
     icon: '🌀',
     min: 960,
     max: 1060,
-    accent: '#06b6d4',
+    accent: '#5ba6b5',
   },
   pm25_ugm3: {
     label: 'Particles (PM2.5)',
@@ -52,7 +52,7 @@ const SENSOR_META = {
     icon: '🫁',
     min: 0,
     max: 150,
-    accent: '#ef4444',
+    accent: '#c75c5c',
   },
   voc_ppb: {
     label: 'VOCs',
@@ -60,7 +60,7 @@ const SENSOR_META = {
     icon: '🧪',
     min: 0,
     max: 1500,
-    accent: '#10b981',
+    accent: '#4aba8a',
   },
 }
 

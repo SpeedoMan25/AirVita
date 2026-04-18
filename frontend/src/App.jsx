@@ -47,7 +47,7 @@ export default function App() {
 
   // Poll the backend every POLL_INTERVAL_MS
   useEffect(() => {
-    fetchStatus() // Initial fetch
+    fetchStatus()
     const interval = setInterval(fetchStatus, POLL_INTERVAL_MS)
     return () => clearInterval(interval)
   }, [fetchStatus])
@@ -58,13 +58,12 @@ export default function App() {
 
   return (
     <div className="app">
-      {/* Header */}
+      {/* Header — left aligned, compact */}
       <header className="app__header">
         <div className="app__logo">
-          <span className="app__logo-icon">🌿</span>
           <h1 className="app__title">RoomPulse</h1>
         </div>
-        <p className="app__subtitle">Real-time Room Environment Monitor</p>
+        <p className="app__subtitle">Environment Monitor</p>
       </header>
 
       {/* Error banner */}
@@ -76,33 +75,36 @@ export default function App() {
 
       {/* Main Dashboard */}
       <main className="app__main">
-        {/* Score Gauge */}
-        <ScoreGauge score={score} connected={connected} />
+        {/* Top row: Score gauge + AI analysis side by side */}
+        <div className="app__top-row">
+          <ScoreGauge score={score} connected={connected} />
+          <AISummary
+            summary={analysis.summary}
+            flags={analysis.flags}
+            loading={analysisLoading}
+            error={analysisError}
+            onRefresh={fetchAnalysis}
+          />
+        </div>
 
-        {/* AI Analysis Card */}
-        <AISummary
-          summary={analysis.summary}
-          flags={analysis.flags}
-          loading={analysisLoading}
-          error={analysisError}
-          onRefresh={fetchAnalysis}
-        />
-
-        <hr className="app__divider" />
-        <h2 className="app__section-title">Sensor Readings</h2>
-
-        {/* Sensor Cards Grid */}
-        <SensorGrid reading={reading} />
+        {/* Sensor readings section */}
+        <div>
+          <div className="app__section-header">
+            <h2 className="app__section-title">Sensors</h2>
+            <span className="app__section-count">7</span>
+          </div>
+          <SensorGrid reading={reading} />
+        </div>
       </main>
 
       {/* Footer */}
       <footer className="app__footer">
+        <span>RoomPulse v1.0</span>
         {lastFetch && (
-          <p className="app__last-update">
-            Last updated: {lastFetch.toLocaleTimeString()}
-          </p>
+          <span className="app__last-update">
+            Updated {lastFetch.toLocaleTimeString()}
+          </span>
         )}
-        <p>RoomPulse v1.0 — HackAugie 2026</p>
       </footer>
     </div>
   )
