@@ -39,7 +39,7 @@ function getStatusText(score) {
 }
 
 /**
- * ScoreGauge — Circular SVG gauge displaying the Room Health Score.
+ * ScoreGauge — Semi-circular SVG meter displaying the Room Health Score.
  *
  * @param {Object} props
  * @param {number} props.score - 0–99 (0 = no data)
@@ -50,13 +50,17 @@ export default function ScoreGauge({ score = 0, connected = false }) {
   const gradient = useMemo(() => getScoreGradient(score), [score])
   const status = useMemo(() => getStatusText(score), [score])
 
-  // SVG circle math
-  const radius = 100
-  const circumference = 2 * Math.PI * radius
+  // SVG math for semi-circle
+  const radius = 90
+  const circumference = Math.PI * radius // Half-circle length
   const progress = score > 0 ? (score / 99) * circumference : 0
-  const offset = circumference - progress
+  const strokeDashoffset = circumference - progress
 
   const gradientId = 'score-gradient'
+
+  // Path for 180deg arc: M startX startY A radiusX radiusY rotation largeArc sweepX endX
+  // Starts at left (20, 110) and ends at right (200, 110)
+  const arcPath = `M 20,110 A ${radius},${radius} 0 0 1 200,110`
 
   return (
     <div className="score-gauge">
@@ -67,24 +71,25 @@ export default function ScoreGauge({ score = 0, connected = false }) {
           style={{ borderColor: `${color}30` }}
         />
 
-        {/* SVG Ring */}
-        <svg className="score-gauge__svg" viewBox="0 0 220 220">
+        {/* SVG Arc */}
+        <svg className="score-gauge__svg" viewBox="0 0 220 130">
           <defs>
-            <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor={gradient.from} />
-              <stop offset="100%" stopColor={gradient.to} />
+            <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#ef4444" />
+              <stop offset="50%" stopColor="#eab308" />
+              <stop offset="100%" stopColor="#22c55e" />
             </linearGradient>
           </defs>
-          <circle
+          <path
             className="score-gauge__track"
-            cx="110" cy="110" r={radius}
+            d={arcPath}
           />
-          <circle
+          <path
             className="score-gauge__progress"
-            cx="110" cy="110" r={radius}
+            d={arcPath}
             stroke={`url(#${gradientId})`}
             strokeDasharray={circumference}
-            strokeDashoffset={offset}
+            strokeDashoffset={strokeDashoffset}
           />
         </svg>
 
