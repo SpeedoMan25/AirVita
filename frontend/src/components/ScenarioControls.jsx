@@ -15,8 +15,11 @@ export default function ScenarioControls({ scenarios, activeId, onSelect }) {
   return (
     <div className="scenario-panel">
       <div className="scenario-panel__header">
-        <span className="scenario-panel__icon">🎮</span>
-        <h3 className="scenario-panel__title">Simulation Controls</h3>
+        <span className="scenario-panel__icon">🧠</span>
+        <div>
+          <h3 className="scenario-panel__title">Environment Simulation</h3>
+          <p className="scenario-panel__subtitle">Manual neural overrides active</p>
+        </div>
       </div>
       
       <div className="scenario-panel__grid">
@@ -26,14 +29,12 @@ export default function ScenarioControls({ scenarios, activeId, onSelect }) {
             className={`scenario-btn ${s.id === activeId ? 'scenario-btn--active' : ''}`}
             onClick={() => onSelect(s.id)}
             id={`btn-scenario-${s.id}`}
+            title={s.name}
           >
+            <span className="scenario-btn__icon">{s.icon || '📍'}</span>
             <span className="scenario-btn__name">{s.name}</span>
           </button>
         ))}
-      </div>
-      
-      <div className="scenario-panel__info">
-        Selecting a preset pauses auto-cycling for 60s.
       </div>
     </div>
   );

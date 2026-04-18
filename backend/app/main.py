@@ -23,14 +23,35 @@ scaler = None
 latest_status = RoomStatus(reading=None, score=0, last_updated=None, connected=False)
 
 # Simulation State
-AUTO_CYCLE = True
-MANUAL_SCENARIO_EXPIRY = 0 # timestamp when auto-cycle should resume
+AUTO_CYCLE = False 
+CURRENT_SCENARIO_INDEX = 0
+ACTIVE_SCENARIO_ID = "ideal" # Start with ideal
 
 SIMULATION_SCENARIOS = [
-    {"id": "ideal", "name": "Ideal Spring Day", "data": [45.0, 1013.0, 500.0, 22.0, 10.0, 15.0, 20.0, 15.0], "vocs": 50.0, "particulates": 5.0},
-    {"id": "wildfire", "name": "California Wildfire (Smoke)", "data": [15.0, 1005.0, 200.0, 35.0, 10.0, 15.0, 20.0, 15.0], "vocs": 800.0, "particulates": 250.0},
-    {"id": "party", "name": "Loud Classroom / Party", "data": [55.0, 1010.0, 800.0, 26.0, 80.0, 90.0, 70.0, 85.0], "vocs": 400.0, "particulates": 20.0},
-    {"id": "basement", "name": "Stuffy Basement", "data": [85.0, 1015.0, 50.0, 18.0, 5.0, 5.0, 5.0, 5.0], "vocs": 1200.0, "particulates": 10.0}
+    {"id": "ideal", "name": "Ideal Day", "icon": "🌸", "data": [45.0, 1013.0, 500.0, 22.0, 10.0, 15.0, 20.0, 15.0], "vocs": 50.0, "particulates": 5.0},
+    {"id": "wildfire", "name": "Wildfire", "icon": "🔥", "data": [15.0, 1005.0, 200.0, 35.0, 10.0, 15.0, 20.0, 15.0], "vocs": 800.0, "particulates": 250.0},
+    {"id": "party", "name": "Loud Party", "icon": "🎉", "data": [55.0, 1010.0, 800.0, 26.0, 80.0, 90.0, 70.0, 85.0], "vocs": 400.0, "particulates": 20.0},
+    {"id": "basement", "name": "Basement", "icon": "🏚️", "data": [85.0, 1015.0, 50.0, 18.0, 5.0, 5.0, 5.0, 5.0], "vocs": 1200.0, "particulates": 10.0},
+    {"id": "mountain", "name": "Everest Peak", "icon": "🏔️", "data": [30.0, 850.0, 1000.0, 5.0, 5.0, 5.0, 5.0, 5.0], "vocs": 10.0, "particulates": 2.0},
+    {"id": "storm", "name": "T-Storm", "icon": "⛈️", "data": [95.0, 980.0, 50.0, 24.0, 60.0, 70.0, 80.0, 75.0], "vocs": 100.0, "particulates": 15.0},
+    {"id": "kitchen", "name": "Chef Suite", "icon": "🍳", "data": [65.0, 1012.0, 600.0, 32.0, 20.0, 25.0, 30.0, 25.0], "vocs": 1500.0, "particulates": 60.0},
+    {"id": "server", "name": "Data Center", "icon": "🖥️", "data": [20.0, 1013.0, 300.0, 16.0, 40.0, 45.0, 50.0, 45.0], "vocs": 20.0, "particulates": 5.0},
+    {"id": "mist", "name": "Redwood Mist", "icon": "🌫️", "data": [90.0, 1018.0, 100.0, 12.0, 5.0, 5.0, 10.0, 5.0], "vocs": 30.0, "particulates": 5.0},
+    {"id": "industrial", "name": "Steel Foundry", "icon": "🏭", "data": [40.0, 1010.0, 400.0, 28.0, 50.0, 60.0, 70.0, 65.0], "vocs": 600.0, "particulates": 400.0},
+    {"id": "office", "name": "Boardroom", "icon": "💼", "data": [50.0, 1012.0, 500.0, 24.0, 30.0, 40.0, 20.0, 35.0], "vocs": 900.0, "particulates": 10.0},
+    {"id": "library", "name": "Old Library", "icon": "📚", "data": [45.0, 1013.0, 400.0, 21.0, 5.0, 5.0, 5.0, 5.0], "vocs": 40.0, "particulates": 5.0},
+    {"id": "moon", "name": "Moon Base", "icon": "👨‍🚀", "data": [0.0, 1013.0, 800.0, 20.0, 2.0, 2.0, 2.0, 2.0], "vocs": 5.0, "particulates": 0.0},
+    {"id": "deepsea", "name": "Atlantis Lab", "icon": "🧜‍♂️", "data": [70.0, 2000.0, 100.0, 18.0, 10.0, 10.0, 10.0, 10.0], "vocs": 10.0, "particulates": 5.0},
+    {"id": "mars", "name": "Martian Dome", "icon": "☄️", "data": [5.0, 10.0, 1200.0, -10.0, 5.0, 5.0, 5.0, 5.0], "vocs": 50.0, "particulates": 500.0},
+    {"id": "cyberpunk", "name": "Neo-Tokyo", "icon": "🚥", "data": [80.0, 1008.0, 1500.0, 26.0, 70.0, 75.0, 80.0, 78.0], "vocs": 800.0, "particulates": 80.0},
+    {"id": "zen", "name": "Zen Garden", "icon": "🧘", "data": [40.0, 1015.0, 300.0, 19.0, 2.0, 2.0, 2.0, 2.0], "vocs": 20.0, "particulates": 2.0},
+    {"id": "volcano", "name": "Magma Rim", "icon": "🌋", "data": [10.0, 1000.0, 2000.0, 55.0, 40.0, 50.0, 60.0, 55.0], "vocs": 3000.0, "particulates": 1200.0},
+    {"id": "arctic", "name": "Ice Station", "icon": "🧊", "data": [20.0, 1025.0, 50.0, -25.0, 10.0, 10.0, 10.0, 10.0], "vocs": 5.0, "particulates": 2.0},
+    {"id": "rainforest", "name": "Amazon Hut", "icon": "🦜", "data": [99.0, 1010.0, 400.0, 30.0, 40.0, 50.0, 40.0, 45.0], "vocs": 150.0, "particulates": 10.0},
+    {"id": "desert", "name": "Sahara Dune", "icon": "🦂", "data": [5.0, 1005.0, 3000.0, 48.0, 15.0, 20.0, 25.0, 20.0], "vocs": 10.0, "particulates": 800.0},
+    {"id": "haunted", "name": "Crypt", "icon": "👻", "data": [85.0, 1010.0, 10.0, 13.0, 20.0, 30.0, 40.0, 35.0], "vocs": 200.0, "particulates": 100.0},
+    {"id": "fireplace", "name": "Cozy Cabin", "icon": "🏡", "data": [35.0, 1014.0, 400.0, 25.0, 10.0, 15.0, 10.0, 15.0], "vocs": 300.0, "particulates": 40.0},
+    {"id": "space", "name": "ISS Orbit", "icon": "🛰️", "data": [40.0, 1013.0, 1000.0, 22.0, 30.0, 30.0, 30.0, 30.0], "vocs": 400.0, "particulates": 5.0}
 ]
 
 # Hybrid Scoring Constants
@@ -141,33 +162,44 @@ async def run_data_generator():
     use_mock = os.getenv("MOCK_SERIAL", "false").lower() in ("true", "1", "yes")
     
     if use_mock:
-        print("🧪 Simulation Mode: Started.")
-        current_idx = 0
+        print("🧪 Simulation Mode: Started with Jitter.")
+        import random
+        
+        last_cycle_time = 0
         
         while True:
-            # Check if manual override is active
-            if not AUTO_CYCLE and datetime.now(timezone.utc).timestamp() < MANUAL_SCENARIO_EXPIRY:
-                await asyncio.sleep(1)
-                continue
+            now = datetime.now(timezone.utc).timestamp()
             
-            # If we reached here, either AUTO_CYCLE is True or override expired
-            if not AUTO_CYCLE:
-                print("♻️ Manual override expired. Resuming auto-cycle...")
-                AUTO_CYCLE = True
+            # 1. Update Scenario if Auto-cycling is ON
+            if AUTO_CYCLE and (now - last_cycle_time > 8):
+                global CURRENT_SCENARIO_INDEX, ACTIVE_SCENARIO_ID
+                CURRENT_SCENARIO_INDEX = (CURRENT_SCENARIO_INDEX + 1) % len(SIMULATION_SCENARIOS)
+                ACTIVE_SCENARIO_ID = SIMULATION_SCENARIOS[CURRENT_SCENARIO_INDEX]["id"]
+                last_cycle_time = now
+                print(f"♻️ Auto-cycle: Switched to {ACTIVE_SCENARIO_ID}")
 
-            s = SIMULATION_SCENARIOS[current_idx % len(SIMULATION_SCENARIOS)]
-            current_idx += 1
+            # 2. Get current base scenario
+            s = next((scen for scen in SIMULATION_SCENARIOS if scen["id"] == ACTIVE_SCENARIO_ID), SIMULATION_SCENARIOS[0])
             
-            # Prepare data
+            # 3. Apply Jitter (±1.5%)
+            def jitter(val):
+                return val * random.uniform(0.985, 1.015)
+
             payload = {
-                "humidity": s["data"][0], "pressure": s["data"][1], "light": s["data"][2], "temperature": s["data"][3],
-                "sound_high": s["data"][4], "sound_mid": s["data"][5], "sound_low": s["data"][6], "sound_amp": s["data"][7],
-                "vocs": s["vocs"], "particulates": s["particulates"]
+                "humidity": jitter(s["data"][0]), 
+                "pressure": jitter(s["data"][1]), 
+                "light": jitter(s["data"][2]), 
+                "temperature": jitter(s["data"][3]),
+                "sound_high": jitter(s["data"][4]), 
+                "sound_mid": jitter(s["data"][5]), 
+                "sound_low": jitter(s["data"][6]), 
+                "sound_amp": jitter(s["data"][7]),
+                "vocs": jitter(s["vocs"]), 
+                "particulates": jitter(s["particulates"])
             }
             
             update_status_from_dict(payload)
-            print(f"Simulated Scene: {s['name']} | Score: {latest_status.score}")
-            await asyncio.sleep(8) # Cycle every 8 seconds in auto mode
+            await asyncio.sleep(2) # Refresh live data every 2 seconds
     else:
         print("🔌 Production Mode: Waiting for serial data...")
         pass
@@ -247,7 +279,7 @@ async def process_sensor_data(payload: SensorDataPayload):
 async def get_scenarios():
     """Returns available simulation presets."""
     return [
-        {"id": s["id"], "name": s["name"]} 
+        {"id": s["id"], "name": s["name"], "icon": s.get("icon", "🔹")} 
         for s in SIMULATION_SCENARIOS
     ]
 
@@ -256,27 +288,25 @@ class ScenarioSelect(BaseModel):
 
 @app.post("/api/scenarios/select")
 async def select_scenario(selection: ScenarioSelect):
-    """Manually triggers a specific scenario and pauses auto-cycling."""
-    global AUTO_CYCLE, MANUAL_SCENARIO_EXPIRY
+    """Manually triggers a specific scenario and stops auto-cycling."""
+    global AUTO_CYCLE, ACTIVE_SCENARIO_ID
     
     scenario = next((s for s in SIMULATION_SCENARIOS if s["id"] == selection.id), None)
     if not scenario:
         raise HTTPException(status_code=404, detail="Scenario not found")
     
-    # Prepare data
+    ACTIVE_SCENARIO_ID = selection.id
+    AUTO_CYCLE = False # Lock to this scenario
+    
+    # Immediate update
     payload = {
         "humidity": scenario["data"][0], "pressure": scenario["data"][1], "light": scenario["data"][2], "temperature": scenario["data"][3],
         "sound_high": scenario["data"][4], "sound_mid": scenario["data"][5], "sound_low": scenario["data"][6], "sound_amp": scenario["data"][7],
         "vocs": scenario["vocs"], "particulates": scenario["particulates"]
     }
-    
     update_status_from_dict(payload)
     
-    # Pause auto-cycle for 60 seconds
-    AUTO_CYCLE = False
-    MANUAL_SCENARIO_EXPIRY = datetime.now(timezone.utc).timestamp() + 60
-    
-    return {"status": "success", "scenario": scenario["name"], "resumes_in": 60}
+    return {"status": "success", "scenario": scenario["name"]}
 
 @app.get("/health")
 async def health():
