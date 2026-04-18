@@ -25,11 +25,8 @@ services:
     environment:
       - MOCK_SERIAL=true
       - GEMINI_API_KEY=${GEMINI_API_KEY}
-      # - SERIAL_PORT=/dev/ttyACM0
-      # - SERIAL_BAUD=115200
-    # ── Linux USB Passthrough (uncomment to use real Pico) ──
-    # devices:
-    #   - "/dev/ttyACM0:/dev/ttyACM0"
+    volumes:
+      - ./backend:/app
     restart: unless-stopped
 
   frontend:
@@ -39,6 +36,9 @@ services:
       - "5173:5173"
     environment:
       - VITE_API_URL=http://localhost:8000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
     depends_on:
       - backend
     restart: unless-stopped

@@ -20,9 +20,18 @@ class SensorReading(BaseModel):
     timestamp_ms: Optional[int] = Field(None, description="Pico tick timestamp")
 
 
+class ScoreBreakdown(BaseModel):
+    """Breakdown of the final IAQ score calculation."""
+    base_mlp_score: float = Field(0.0, description="Score from the Neural Network")
+    voc_penalty: float = Field(0.0, description="Deduction due to VOCs")
+    pm25_penalty: float = Field(0.0, description="Deduction due to Particulates")
+    final_score: int = Field(0, description="Resulting clamped score")
+
+
 class RoomStatus(BaseModel):
     """Full API response with sensor data + computed score."""
     reading: Optional[SensorReading] = None
     score: int = Field(0, ge=0, le=99, description="Room Health Score (1-99, 0 = no data)")
+    breakdown: Optional[ScoreBreakdown] = None
     last_updated: Optional[datetime] = None
     connected: bool = Field(False, description="Whether the serial connection is active")
