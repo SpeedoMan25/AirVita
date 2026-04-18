@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import ScoreGauge from './components/ScoreGauge'
-import SensorGrid from './components/SensorCard'
+import SensorGrid, { SensorInfoDrawer, SENSOR_META } from './components/SensorCard'
 import AISummary from './components/AISummary'
 import './App.css'
 
@@ -15,6 +15,12 @@ export default function App() {
   const [analysis, setAnalysis] = useState({ summary: '', flags: [] })
   const [analysisLoading, setAnalysisLoading] = useState(false)
   const [analysisError, setAnalysisError] = useState(null)
+
+  const [activeSensorKey, setActiveSensorKey] = useState(null)
+
+  const toggleSensorInfo = useCallback((key) => {
+    setActiveSensorKey(prev => prev === key ? null : key)
+  }, [])
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -55,61 +61,74 @@ export default function App() {
   const connected = status?.connected ?? false
 
   return (
-    <div className="app">
-      {/* ── Header ── */}
-      <header className="app__header">
-        <div className="app__brand">
-          <div className="app__logo-mark">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9z" />
-              <polyline points="9 22 9 12 15 12 15 22" />
-            </svg>
+    <div className={`app ${activeSensorKey ? 'app--drawer-open' : ''}`}>
+      <div className="app__content-wrapper">
+        {/* ── Header ── */}
+        <header className="app__header">
+          <div className="app__brand">
+            <div className="app__logo-mark">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9z" />
+                <polyline points="9 22 9 12 15 12 15 22" />
+              </svg>
+            </div>
+            <h1 className="app__title">RoomPulse</h1>
           </div>
-          <h1 className="app__title">RoomPulse</h1>
-        </div>
 
-        <div className="app__header-right">
-          <div className="app__status-pill">
-            <span className={`app__status-dot ${connected ? 'app__status-dot--on' : 'app__status-dot--off'}`} />
-            {connected ? 'Live' : 'Offline'}
+          <div className="app__header-right">
+            <div className="app__status-pill">
+              <span className={`app__status-dot ${connected ? 'app__status-dot--on' : 'app__status-dot--off'}`} />
+              {connected ? 'Live' : 'Offline'}
+            </div>
+            {lastFetch && (
+              <span className="app__last-update">
+                {lastFetch.toLocaleTimeString()}
+              </span>
+            )}
           </div>
-          {lastFetch && (
-            <span className="app__last-update">
-              {lastFetch.toLocaleTimeString()}
-            </span>
-          )}
-        </div>
-      </header>
+        </header>
 
-      {error && (
-        <div className="app__error" role="alert" id="error-banner">
-          {error}
-        </div>
+        {error && (
+          <div className="app__error" role="alert" id="error-banner">
+            {error}
+          </div>
+        )}
+
+        <main className="app__main">
+          {/* ── Hero row ── */}
+          <div className="app__hero">
+            <ScoreGauge score={score} />
+            <AISummary
+              summary={analysis.summary}
+              flags={analysis.flags}
+              loading={analysisLoading}
+              error={analysisError}
+              onRefresh={fetchAnalysis}
+            />
+          </div>
+
+          {/* ── Attribute cards ── */}
+          <section>
+            <h2 className="app__section-label">Your Environment</h2>
+            <SensorGrid 
+              reading={reading} 
+              onInfoClick={toggleSensorInfo}
+            />
+          </section>
+        </main>
+
+        <footer className="app__footer">
+          RoomPulse · HackAugie 2026
+        </footer>
+      </div>
+
+      {activeSensorKey && (
+        <SensorInfoDrawer
+          meta={SENSOR_META[activeSensorKey]}
+          value={reading ? reading[activeSensorKey] : null}
+          onClose={() => setActiveSensorKey(null)}
+        />
       )}
-
-      <main className="app__main">
-        {/* ── Hero row ── */}
-        <div className="app__hero">
-          <ScoreGauge score={score} />
-          <AISummary
-            summary={analysis.summary}
-            flags={analysis.flags}
-            loading={analysisLoading}
-            error={analysisError}
-            onRefresh={fetchAnalysis}
-          />
-        </div>
-
-        {/* ── Attribute cards ── */}
-        <section>
-          <h2 className="app__section-label">Your Environment</h2>
-          <SensorGrid reading={reading} />
-        </section>
-      </main>
-
-      <footer className="app__footer">
-        RoomPulse · HackAugie 2026
-      </footer>
     </div>
   )
 }

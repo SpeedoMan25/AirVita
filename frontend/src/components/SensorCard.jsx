@@ -171,7 +171,7 @@ const SENSOR_META = {
    Modal Component
    ───────────────────────────────────────── */
 
-function SensorInfoModal({ meta, value, onClose }) {
+export function SensorInfoDrawer({ meta, value, onClose }) {
   if (!meta) return null
 
   const displayVal = (value === null || value === undefined) ? '—' : typeof value === 'number' ? value.toFixed(1) : value
@@ -221,8 +221,7 @@ function SensorInfoModal({ meta, value, onClose }) {
    SensorCard
    ───────────────────────────────────────── */
 
-function SensorCard({ sensorKey, value }) {
-  const [isModalOpen, setIsModalOpen] = useState(false)
+function SensorCard({ sensorKey, value, onInfoClick }) {
   const meta = SENSOR_META[sensorKey]
   if (!meta) return null
 
@@ -235,47 +234,37 @@ function SensorCard({ sensorKey, value }) {
     : Math.max(0, Math.min(100, ((value - meta.min) / (meta.max - meta.min)) * 100))
 
   return (
-    <>
-      <div
-        className={`env-card ${isLoading ? 'env-card--loading' : ''}`}
-        style={{ '--card-bg': meta.palette.bg, '--card-accent': meta.palette.accent, '--card-icon-bg': meta.palette.iconBg }}
-        id={`sensor-${sensorKey}`}
+    <div
+      className={`env-card ${isLoading ? 'env-card--loading' : ''}`}
+      style={{ '--card-bg': meta.palette.bg, '--card-accent': meta.palette.accent, '--card-icon-bg': meta.palette.iconBg }}
+      id={`sensor-${sensorKey}`}
+    >
+      <button 
+        className="env-card__info-btn" 
+        onClick={() => onInfoClick(sensorKey)}
+        title={`More about ${meta.label}`}
       >
-        <button 
-          className="env-card__info-btn" 
-          onClick={() => setIsModalOpen(true)}
-          title={`More about ${meta.label}`}
-        >
-          {Icons.info}
-        </button>
+        {Icons.info}
+      </button>
 
-        <div className="env-card__icon-wrap">
-          {Icons[meta.icon]}
-        </div>
-
-        <div className="env-card__info">
-          <span className="env-card__label">{meta.label}</span>
-          {statusWord && <span className="env-card__status">{statusWord}</span>}
-        </div>
-
-        <div className="env-card__data">
-          <span className="env-card__value">{displayVal}</span>
-          {!isLoading && <span className="env-card__unit">{meta.unit}</span>}
-        </div>
-
-        <div className="env-card__bar">
-          <div className="env-card__bar-fill" style={{ width: `${barPercent}%` }} />
-        </div>
+      <div className="env-card__icon-wrap">
+        {Icons[meta.icon]}
       </div>
 
-      {isModalOpen && (
-        <SensorInfoModal 
-          meta={meta} 
-          value={value} 
-          onClose={() => setIsModalOpen(false)} 
-        />
-      )}
-    </>
+      <div className="env-card__info">
+        <span className="env-card__label">{meta.label}</span>
+        {statusWord && <span className="env-card__status">{statusWord}</span>}
+      </div>
+
+      <div className="env-card__data">
+        <span className="env-card__value">{displayVal}</span>
+        {!isLoading && <span className="env-card__unit">{meta.unit}</span>}
+      </div>
+
+      <div className="env-card__bar">
+        <div className="env-card__bar-fill" style={{ width: `${barPercent}%` }} />
+      </div>
+    </div>
   )
 }
 
@@ -283,12 +272,17 @@ function SensorCard({ sensorKey, value }) {
    SensorGrid
    ───────────────────────────────────────── */
 
-export default function SensorGrid({ reading }) {
+export default function SensorGrid({ reading, onInfoClick }) {
   const keys = Object.keys(SENSOR_META)
   return (
     <div className="env-grid">
       {keys.map(key => (
-        <SensorCard key={key} sensorKey={key} value={reading ? reading[key] : null} />
+        <SensorCard 
+          key={key} 
+          sensorKey={key} 
+          value={reading ? reading[key] : null} 
+          onInfoClick={onInfoClick}
+        />
       ))}
     </div>
   )
