@@ -168,14 +168,47 @@ const SENSOR_META = {
 }
 
 /* ─────────────────────────────────────────
+   Unit Conversion Helpers
+   ───────────────────────────────────────── */
+
+const CONVERSIONS = {
+  temperature_c: {
+    imperial: { unit: '°F', convert: v => (v * 9/5) + 32, label: 'Temperature' },
+    metric: { unit: '°C', convert: v => v, label: 'Temperature' }
+  },
+  pressure_hpa: {
+    imperial: { unit: 'inHg', convert: v => v * 0.02953, label: 'Pressure' },
+    metric: { unit: 'hPa', convert: v => v, label: 'Pressure' }
+  }
+}
+
+function getConvertedValue(key, value, system) {
+  if (value === null || value === undefined) return value
+  if (CONVERSIONS[key]) {
+    return CONVERSIONS[key][system].convert(value)
+  }
+  return value
+}
+
+function getConvertedUnit(key, system) {
+  if (CONVERSIONS[key]) {
+    return CONVERSIONS[key][system].unit
+  }
+  return SENSOR_META[key].unit
+}
+
+/* ─────────────────────────────────────────
    Modal Component
    ───────────────────────────────────────── */
 
-export function SensorInfoDrawer({ meta, value, onClose }) {
+export function SensorInfoDrawer({ meta, value, onClose, unitSystem }) {
   if (!meta) return null
 
-  const displayVal = (value === null || value === undefined) ? '—' : typeof value === 'number' ? value.toFixed(1) : value
+  const sensorKey = Object.keys(SENSOR_META).find(k => SENSOR_META[k].label === meta.label)
+  const displayValRaw = getConvertedValue(sensorKey, value, unitSystem)
+  const displayVal = (displayValRaw === null || displayValRaw === undefined) ? '—' : typeof displayValRaw === 'number' ? displayValRaw.toFixed(1) : displayValRaw
   const statusWord = (value === null || value === undefined) ? 'Unknown' : meta.getStatus(value)
+  const unit = getConvertedUnit(sensorKey, unitSystem)
 
   return (
     <div className="env-modal-backdrop" onClick={onClose}>
@@ -190,7 +223,7 @@ export function SensorInfoDrawer({ meta, value, onClose }) {
           </div>
           <div>
             <h3>{meta.label} Analysis</h3>
-            <p className="env-modal__subtitle">Currently sitting at <span style={{ color: meta.palette.accent, fontWeight: 700 }}>{displayVal}{meta.unit}</span> ({statusWord})</p>
+            <p className="env-modal__subtitle">Currently sitting at <span style={{ color: meta.palette.accent, fontWeight: 700 }}>{displayVal}{unit}</span> ({statusWord})</p>
           </div>
         </div>
 
@@ -198,18 +231,22 @@ export function SensorInfoDrawer({ meta, value, onClose }) {
           <p className="env-modal__desc">{meta.description}</p>
           
           <div className="env-modal__ranges">
-            <h4 className="env-modal__section-title">Reference Ranges</h4>
-            {meta.ranges.map((r, i) => (
-              <div key={i} className="env-modal__range-item">
-                <div className="env-modal__range-color" style={{ background: r.color }} />
-                <span className="env-modal__range-label">{r.label}</span>
-                <span className="env-modal__range-val">
-                  {r.min !== undefined && r.max !== undefined ? `${r.min} - ${r.max}` : 
-                   r.min !== undefined ? `> ${r.min}` : 
-                   `< ${r.max}`} {meta.unit}
-                </span>
-              </div>
-            ))}
+            <h4 className="env-modal__section-title">Reference Ranges ({unitSystem === 'metric' ? 'Metric' : 'Imperial'})</h4>
+            {meta.ranges.map((r, i) => {
+              const rMin = getConvertedValue(sensorKey, r.min, unitSystem)
+              const rMax = getConvertedValue(sensorKey, r.max, unitSystem)
+              return (
+                <div key={i} className="env-modal__range-item">
+                  <div className="env-modal__range-color" style={{ background: r.color }} />
+                  <span className="env-modal__range-label">{r.label}</span>
+                  <span className="env-modal__range-val">
+                    {rMin !== undefined && rMax !== undefined ? `${rMin.toFixed(rMin > 100 ? 0 : 1)} - ${rMax.toFixed(rMax > 100 ? 0 : 1)}` : 
+                     rMin !== undefined ? `> ${rMin.toFixed(rMin > 100 ? 0 : 1)}` : 
+                     `< ${rMax.toFixed(rMax > 100 ? 0 : 1)}`} {unit}
+                  </span>
+                </div>
+              )
+            })}
           </div>
         </div>
       </div>
@@ -221,13 +258,15 @@ export function SensorInfoDrawer({ meta, value, onClose }) {
    SensorCard
    ───────────────────────────────────────── */
 
-function SensorCard({ sensorKey, value, onInfoClick }) {
+function SensorCard({ sensorKey, value, onInfoClick, unitSystem }) {
   const meta = SENSOR_META[sensorKey]
   if (!meta) return null
 
   const isLoading = value === null || value === undefined
-  const displayVal = isLoading ? '—' : typeof value === 'number' ? value.toFixed(1) : value
+  const displayValRaw = getConvertedValue(sensorKey, value, unitSystem)
+  const displayVal = isLoading ? '—' : typeof displayValRaw === 'number' ? displayValRaw.toFixed(1) : displayValRaw
   const statusWord = isLoading ? '' : meta.getStatus(value)
+  const unit = getConvertedUnit(sensorKey, unitSystem)
 
   const barPercent = isLoading
     ? 0
@@ -258,7 +297,7 @@ function SensorCard({ sensorKey, value, onInfoClick }) {
 
       <div className="env-card__data">
         <span className="env-card__value">{displayVal}</span>
-        {!isLoading && <span className="env-card__unit">{meta.unit}</span>}
+        {!isLoading && <span className="env-card__unit">{unit}</span>}
       </div>
 
       <div className="env-card__bar">
@@ -272,7 +311,7 @@ function SensorCard({ sensorKey, value, onInfoClick }) {
    SensorGrid
    ───────────────────────────────────────── */
 
-export default function SensorGrid({ reading, onInfoClick }) {
+export default function SensorGrid({ reading, onInfoClick, unitSystem }) {
   const keys = Object.keys(SENSOR_META)
   return (
     <div className="env-grid">
@@ -282,6 +321,7 @@ export default function SensorGrid({ reading, onInfoClick }) {
           sensorKey={key} 
           value={reading ? reading[key] : null} 
           onInfoClick={onInfoClick}
+          unitSystem={unitSystem}
         />
       ))}
     </div>

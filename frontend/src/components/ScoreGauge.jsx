@@ -21,11 +21,7 @@ function getStatusWord(score) {
 }
 
 function getEmoji(score) {
-  if (score <= 0) return '🏠'
-  if (score <= 40) return '😕'
-  if (score <= 60) return '🙂'
-  if (score <= 80) return '😊'
-  return '🌿'
+  return null
 }
 
 export default function ScoreGauge({ score = 0 }) {
@@ -43,7 +39,6 @@ export default function ScoreGauge({ score = 0 }) {
   return (
     <div className="score-card" id="score-gauge">
       <div className="score-card__top">
-        <span className="score-card__emoji">{emoji}</span>
         <span className="score-card__heading">Room Health</span>
       </div>
 

@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import joblib
+import json
 import numpy as np
 import os
 import asyncio
@@ -11,6 +12,7 @@ from contextlib import asynccontextmanager
 import pandas as pd
 from app.models import RoomStatus, SensorReading, ScoreBreakdown
 from app.gemini import generate_analysis
+from app.scoring import calculate_sleep_score
 
 # Configuration
 MODEL_DIR = Path(__file__).parent.parent / "model"
@@ -20,39 +22,25 @@ SCALER_PATH = MODEL_DIR / "scaler.pkl"
 # Global variables for model, scaler, and state
 model = None
 scaler = None
-latest_status = RoomStatus(reading=None, score=0, last_updated=None, connected=False)
+latest_status = RoomStatus(reading=None, score=0, sleep_score=0, last_updated=None, connected=False)
 
 # Simulation State
 AUTO_CYCLE = False 
 CURRENT_SCENARIO_INDEX = 0
 ACTIVE_SCENARIO_ID = "ideal" # Start with ideal
 
-SIMULATION_SCENARIOS = [
-    {"id": "ideal", "name": "Ideal Day", "icon": "🌸", "data": [45.0, 1013.0, 500.0, 22.0, 10.0, 15.0, 20.0, 15.0], "vocs": 50.0, "particulates": 5.0},
-    {"id": "wildfire", "name": "Wildfire", "icon": "🔥", "data": [15.0, 1005.0, 200.0, 35.0, 10.0, 15.0, 20.0, 15.0], "vocs": 800.0, "particulates": 250.0},
-    {"id": "party", "name": "Loud Party", "icon": "🎉", "data": [55.0, 1010.0, 800.0, 26.0, 80.0, 90.0, 70.0, 85.0], "vocs": 400.0, "particulates": 20.0},
-    {"id": "basement", "name": "Basement", "icon": "🏚️", "data": [85.0, 1015.0, 50.0, 18.0, 5.0, 5.0, 5.0, 5.0], "vocs": 1200.0, "particulates": 10.0},
-    {"id": "mountain", "name": "Everest Peak", "icon": "🏔️", "data": [30.0, 850.0, 1000.0, 5.0, 5.0, 5.0, 5.0, 5.0], "vocs": 10.0, "particulates": 2.0},
-    {"id": "storm", "name": "T-Storm", "icon": "⛈️", "data": [95.0, 980.0, 50.0, 24.0, 60.0, 70.0, 80.0, 75.0], "vocs": 100.0, "particulates": 15.0},
-    {"id": "kitchen", "name": "Chef Suite", "icon": "🍳", "data": [65.0, 1012.0, 600.0, 32.0, 20.0, 25.0, 30.0, 25.0], "vocs": 1500.0, "particulates": 60.0},
-    {"id": "server", "name": "Data Center", "icon": "🖥️", "data": [20.0, 1013.0, 300.0, 16.0, 40.0, 45.0, 50.0, 45.0], "vocs": 20.0, "particulates": 5.0},
-    {"id": "mist", "name": "Redwood Mist", "icon": "🌫️", "data": [90.0, 1018.0, 100.0, 12.0, 5.0, 5.0, 10.0, 5.0], "vocs": 30.0, "particulates": 5.0},
-    {"id": "industrial", "name": "Steel Foundry", "icon": "🏭", "data": [40.0, 1010.0, 400.0, 28.0, 50.0, 60.0, 70.0, 65.0], "vocs": 600.0, "particulates": 400.0},
-    {"id": "office", "name": "Boardroom", "icon": "💼", "data": [50.0, 1012.0, 500.0, 24.0, 30.0, 40.0, 20.0, 35.0], "vocs": 900.0, "particulates": 10.0},
-    {"id": "library", "name": "Old Library", "icon": "📚", "data": [45.0, 1013.0, 400.0, 21.0, 5.0, 5.0, 5.0, 5.0], "vocs": 40.0, "particulates": 5.0},
-    {"id": "moon", "name": "Moon Base", "icon": "👨‍🚀", "data": [0.0, 1013.0, 800.0, 20.0, 2.0, 2.0, 2.0, 2.0], "vocs": 5.0, "particulates": 0.0},
-    {"id": "deepsea", "name": "Atlantis Lab", "icon": "🧜‍♂️", "data": [70.0, 2000.0, 100.0, 18.0, 10.0, 10.0, 10.0, 10.0], "vocs": 10.0, "particulates": 5.0},
-    {"id": "mars", "name": "Martian Dome", "icon": "☄️", "data": [5.0, 10.0, 1200.0, -10.0, 5.0, 5.0, 5.0, 5.0], "vocs": 50.0, "particulates": 500.0},
-    {"id": "cyberpunk", "name": "Neo-Tokyo", "icon": "🚥", "data": [80.0, 1008.0, 1500.0, 26.0, 70.0, 75.0, 80.0, 78.0], "vocs": 800.0, "particulates": 80.0},
-    {"id": "zen", "name": "Zen Garden", "icon": "🧘", "data": [40.0, 1015.0, 300.0, 19.0, 2.0, 2.0, 2.0, 2.0], "vocs": 20.0, "particulates": 2.0},
-    {"id": "volcano", "name": "Magma Rim", "icon": "🌋", "data": [10.0, 1000.0, 2000.0, 55.0, 40.0, 50.0, 60.0, 55.0], "vocs": 3000.0, "particulates": 1200.0},
-    {"id": "arctic", "name": "Ice Station", "icon": "🧊", "data": [20.0, 1025.0, 50.0, -25.0, 10.0, 10.0, 10.0, 10.0], "vocs": 5.0, "particulates": 2.0},
-    {"id": "rainforest", "name": "Amazon Hut", "icon": "🦜", "data": [99.0, 1010.0, 400.0, 30.0, 40.0, 50.0, 40.0, 45.0], "vocs": 150.0, "particulates": 10.0},
-    {"id": "desert", "name": "Sahara Dune", "icon": "🦂", "data": [5.0, 1005.0, 3000.0, 48.0, 15.0, 20.0, 25.0, 20.0], "vocs": 10.0, "particulates": 800.0},
-    {"id": "haunted", "name": "Crypt", "icon": "👻", "data": [85.0, 1010.0, 10.0, 13.0, 20.0, 30.0, 40.0, 35.0], "vocs": 200.0, "particulates": 100.0},
-    {"id": "fireplace", "name": "Cozy Cabin", "icon": "🏡", "data": [35.0, 1014.0, 400.0, 25.0, 10.0, 15.0, 10.0, 15.0], "vocs": 300.0, "particulates": 40.0},
-    {"id": "space", "name": "ISS Orbit", "icon": "🛰️", "data": [40.0, 1013.0, 1000.0, 22.0, 30.0, 30.0, 30.0, 30.0], "vocs": 400.0, "particulates": 5.0}
-]
+# Load Simulation Scenarios from JSON
+SCENARIOS_FILE = Path(__file__).parent / "scenarios.json"
+SIMULATION_SCENARIOS = []
+try:
+    if SCENARIOS_FILE.exists():
+        with open(SCENARIOS_FILE, "r", encoding="utf-8") as f:
+            SIMULATION_SCENARIOS = json.load(f)
+        print(f"Loaded {len(SIMULATION_SCENARIOS)} simulation scenarios.")
+    else:
+        print(f"Warning: {SCENARIOS_FILE} not found.")
+except Exception as e:
+    print(f"Error loading scenarios.json: {e}")
 
 # Hybrid Scoring Constants
 COEFF_MLP_BASE = 1.0
@@ -186,16 +174,16 @@ async def run_data_generator():
                 return val * random.uniform(0.985, 1.015)
 
             payload = {
-                "humidity": jitter(s["data"][0]), 
-                "pressure": jitter(s["data"][1]), 
-                "light": jitter(s["data"][2]), 
-                "temperature": jitter(s["data"][3]),
-                "sound_high": jitter(s["data"][4]), 
-                "sound_mid": jitter(s["data"][5]), 
-                "sound_low": jitter(s["data"][6]), 
-                "sound_amp": jitter(s["data"][7]),
-                "vocs": jitter(s["vocs"]), 
-                "particulates": jitter(s["particulates"])
+                "humidity": jitter(s["inputs"]["humidity"]), 
+                "pressure": jitter(s["inputs"]["pressure"]), 
+                "light": jitter(s["inputs"]["light"]), 
+                "temperature": jitter(s["inputs"]["temperature"]),
+                "sound_high": 10.0, 
+                "sound_mid": 10.0, 
+                "sound_low": 10.0, 
+                "sound_amp": jitter(s["inputs"]["noise"]),
+                "vocs": jitter(s["inputs"]["vocs"]), 
+                "particulates": jitter(s["inputs"]["particulates"])
             }
             
             update_status_from_dict(payload)
@@ -215,6 +203,7 @@ def update_status_from_dict(payload_data: dict):
                 timestamp_ms=int(datetime.now(timezone.utc).timestamp() * 1000)
             ),
             score=results["final_score"],
+            sleep_score=calculate_sleep_score(results["reading"]),
             breakdown=ScoreBreakdown(
                 base_mlp_score=results["base_score"],
                 voc_penalty=results["voc_penalty"],
@@ -259,7 +248,7 @@ async def analyze_room():
     
     # Format the reading for Gemini
     reading_dict = latest_status.reading.model_dump()
-    analysis = generate_analysis(reading_dict, latest_status.score)
+    analysis = generate_analysis(reading_dict, latest_status.score, latest_status.sleep_score)
     return analysis
 
 @app.post("/api/sensor-data")
@@ -300,9 +289,9 @@ async def select_scenario(selection: ScenarioSelect):
     
     # Immediate update
     payload = {
-        "humidity": scenario["data"][0], "pressure": scenario["data"][1], "light": scenario["data"][2], "temperature": scenario["data"][3],
-        "sound_high": scenario["data"][4], "sound_mid": scenario["data"][5], "sound_low": scenario["data"][6], "sound_amp": scenario["data"][7],
-        "vocs": scenario["vocs"], "particulates": scenario["particulates"]
+        "humidity": scenario["inputs"]["humidity"], "pressure": scenario["inputs"]["pressure"], "light": scenario["inputs"]["light"], "temperature": scenario["inputs"]["temperature"],
+        "sound_high": 10.0, "sound_mid": 10.0, "sound_low": 10.0, "sound_amp": scenario["inputs"]["noise"],
+        "vocs": scenario["inputs"]["vocs"], "particulates": scenario["inputs"]["particulates"]
     }
     update_status_from_dict(payload)
     

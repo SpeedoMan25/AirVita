@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import ScoreGauge from './components/ScoreGauge'
+import SleepScoreGauge from './components/SleepScoreGauge'
 import SensorGrid, { SensorInfoDrawer, SENSOR_META } from './components/SensorCard'
 import AISummary from './components/AISummary'
 import ScenarioControls from './components/ScenarioControls'
@@ -26,6 +27,7 @@ export default function App() {
   // Drawer state (from origin/main)
   const [activeSensorKey, setActiveSensorKey] = useState(null)
   const [isTechOpen, setIsTechOpen] = useState(false)
+  const [unitSystem, setUnitSystem] = useState('metric') // 'metric' or 'imperial'
 
   const toggleSensorInfo = useCallback((key) => {
     setActiveSensorKey(prev => prev === key ? null : key)
@@ -100,6 +102,7 @@ export default function App() {
   }, [fetchStatus, fetchScenarios])
 
   const score = status?.score ?? 0
+  const sleepScore = status?.sleep_score ?? 0
   const reading = status?.reading ?? null
   const breakdown = status?.breakdown ?? null
   const connected = status?.connected ?? false
@@ -129,6 +132,21 @@ export default function App() {
           </div>
 
           <div className="app__header-right">
+            <div className="app__unit-toggle">
+              <button 
+                className={`app__unit-btn ${unitSystem === 'metric' ? 'app__unit-btn--active' : ''}`}
+                onClick={() => setUnitSystem('metric')}
+              >
+                Metric
+              </button>
+              <button 
+                className={`app__unit-btn ${unitSystem === 'imperial' ? 'app__unit-btn--active' : ''}`}
+                onClick={() => setUnitSystem('imperial')}
+              >
+                Imperial
+              </button>
+            </div>
+            
             <div className="app__status-pill">
               <span className={`app__status-dot ${connected ? 'app__status-dot--on' : 'app__status-dot--off'}`} />
               {connected ? 'Live' : 'Offline'}
@@ -150,9 +168,12 @@ export default function App() {
 
         {/* Main Dashboard Layout */}
         <main className="app__main">
-          {/* Hero Row: Gauge + AI Summary */}
+          {/* Hero Row: Gauges + AI Summary */}
           <div className="app__hero">
-            <ScoreGauge score={score} />
+            <div className="app__gauges">
+              <ScoreGauge score={score} />
+              <SleepScoreGauge score={sleepScore} />
+            </div>
             <AISummary
               summary={analysis.summary}
               flags={analysis.flags}
@@ -168,6 +189,7 @@ export default function App() {
             <SensorGrid 
               reading={reading} 
               onInfoClick={toggleSensorInfo}
+              unitSystem={unitSystem}
             />
           </section>
         </main>
@@ -209,6 +231,7 @@ export default function App() {
           meta={SENSOR_META[activeSensorKey]}
           value={reading ? reading[activeSensorKey] : null}
           onClose={() => setActiveSensorKey(null)}
+          unitSystem={unitSystem}
         />
       )}
     </div>

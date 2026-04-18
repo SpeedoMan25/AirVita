@@ -32,6 +32,7 @@ class RoomStatus(BaseModel):
     """Full API response with sensor data + computed score."""
     reading: Optional[SensorReading] = None
     score: int = Field(0, ge=0, le=99, description="Room Health Score (1-99, 0 = no data)")
+    sleep_score: int = Field(0, ge=0, le=99, description="Sleeping Conditions Score (1-99, 0 = no data)")
     breakdown: Optional[ScoreBreakdown] = None
     last_updated: Optional[datetime] = None
     connected: bool = Field(False, description="Whether the serial connection is active")

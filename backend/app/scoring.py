@@ -25,41 +25,74 @@ from typing import Dict
 SENSOR_CONFIG: Dict[str, dict] = {
     "temperature_c": {
         "ideal_low": 20.0, "ideal_high": 24.0,
-        "abs_min": 10.0,   "abs_max": 38.0,
-        "weight": 0.20,
-    },
-    "humidity_pct": {
-        "ideal_low": 40.0, "ideal_high": 60.0,
-        "abs_min": 10.0,   "abs_max": 95.0,
+        "abs_min": 15.0,   "abs_max": 32.0,
         "weight": 0.15,
     },
+    "humidity_pct": {
+        "ideal_low": 35.0, "ideal_high": 55.0,
+        "abs_min": 10.0,   "abs_max": 90.0,
+        "weight": 0.10,
+    },
     "light_lux": {
-        "ideal_low": 300.0, "ideal_high": 500.0,
-        "abs_min": 0.0,     "abs_max": 1200.0,
+        "ideal_low": 100.0, "ideal_high": 600.0,
+        "abs_min": 0.0,     "abs_max": 2000.0,
         "weight": 0.10,
     },
     "noise_db": {
-        # Lower is better — ideal is 20-40 dB
-        "ideal_low": 20.0, "ideal_high": 40.0,
-        "abs_min": 0.0,    "abs_max": 100.0,
-        "weight": 0.15,
+        "ideal_low": 20.0, "ideal_high": 50.0,
+        "abs_min": 10.0,   "abs_max": 95.0,
+        "weight": 0.20,
     },
     "pressure_hpa": {
         "ideal_low": 1000.0, "ideal_high": 1025.0,
-        "abs_min": 960.0,    "abs_max": 1060.0,
-        "weight": 0.10,
+        "abs_min": 950.0,    "abs_max": 1080.0,
+        "weight": 0.05,
     },
     "pm25_ugm3": {
-        # Lower is better — ideal is 0-35 µg/m³
-        "ideal_low": 0.0,  "ideal_high": 35.0,
-        "abs_min": 0.0,    "abs_max": 250.0,
-        "weight": 0.15,
+        "ideal_low": 0.0,  "ideal_high": 12.0,
+        "abs_min": 0.0,    "abs_max": 150.0,
+        "weight": 0.20,
     },
     "voc_ppb": {
-        # Lower is better — ideal is 0-300 ppb
+        "ideal_low": 0.0,  "ideal_high": 250.0,
+        "abs_min": 0.0,    "abs_max": 1500.0,
+        "weight": 0.20,
+    },
+}
+
+
+# Sleep-specific scoring configuration
+# Focused on darkness, low noise, and cooler temperatures
+SLEEP_SENSOR_CONFIG: Dict[str, dict] = {
+    "temperature_c": {
+        "ideal_low": 16.0, "ideal_high": 19.0,
+        "abs_min": 10.0,   "abs_max": 28.0,
+        "weight": 0.30,
+    },
+    "humidity_pct": {
+        "ideal_low": 30.0, "ideal_high": 50.0,
+        "abs_min": 10.0,   "abs_max": 80.0,
+        "weight": 0.10,
+    },
+    "light_lux": {
+        "ideal_low": 0.0,  "ideal_high": 5.0,
+        "abs_min": 0.0,    "abs_max": 50.0,
+        "weight": 0.30,
+    },
+    "noise_db": {
+        "ideal_low": 20.0, "ideal_high": 35.0,
+        "abs_min": 10.0,   "abs_max": 60.0,
+        "weight": 0.20,
+    },
+    "pm25_ugm3": {
+        "ideal_low": 0.0,  "ideal_high": 15.0,
+        "abs_min": 0.0,    "abs_max": 50.0,
+        "weight": 0.05,
+    },
+    "voc_ppb": {
         "ideal_low": 0.0,  "ideal_high": 300.0,
-        "abs_min": 0.0,    "abs_max": 2000.0,
-        "weight": 0.15,
+        "abs_min": 0.0,    "abs_max": 1000.0,
+        "weight": 0.05,
     },
 }
 
@@ -91,21 +124,23 @@ def _sub_score(value: float, ideal_low: float, ideal_high: float,
 def calculate_room_health_score(readings: dict) -> int:
     """
     Calculate the Room Health Score (1–99) from raw sensor readings.
-
-    Parameters
-    ----------
-    readings : dict
-        Keys matching SENSOR_CONFIG (e.g. "temperature_c", "humidity_pct", ...).
-
-    Returns
-    -------
-    int
-        Composite score clamped to [1, 99].
     """
+    return _calculate_weighted_score(readings, SENSOR_CONFIG)
+
+
+def calculate_sleep_score(readings: dict) -> int:
+    """
+    Calculate the Sleeping Conditions Score (1–99) from raw sensor readings.
+    """
+    return _calculate_weighted_score(readings, SLEEP_SENSOR_CONFIG)
+
+
+def _calculate_weighted_score(readings: dict, config: Dict[str, dict]) -> int:
+    """Utility to calculate a composite score based on a given config."""
     weighted_sum = 0.0
     total_weight = 0.0
 
-    for sensor_key, cfg in SENSOR_CONFIG.items():
+    for sensor_key, cfg in config.items():
         value = readings.get(sensor_key)
         if value is None:
             continue
@@ -119,7 +154,7 @@ def calculate_room_health_score(readings: dict) -> int:
         total_weight += cfg["weight"]
 
     if total_weight == 0:
-        return 1  # No data → worst score
+        return 1
 
     raw_score = weighted_sum / total_weight
     # Map from 0-100 internal scale to 1-99 output
