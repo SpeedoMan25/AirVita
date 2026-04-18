@@ -7,11 +7,19 @@ Launches the serial reader as a background task on startup.
 On startup, loads the pre-trained MLP model and scaler (.pkl) into
 memory so the POST /api/sensor-data route can perform real-time
 inference without re-loading on every request.
+
+When ENABLE_MOCK_DATA is True a background task generates realistic,
+drifting sensor readings every 2 seconds so the frontend can be
+developed without physical hardware.
 """
 
 import asyncio
 import logging
+import math
+import random
+import time
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -61,6 +69,37 @@ _MODEL_FEATURES = [
 VOC_SAFE_THRESHOLD = 300.0    # ppb — below this, no penalty
 VOC_DANGER_CEILING = 2000.0   # ppb — at or above this, maximum penalty
 VOC_MAX_PENALTY = 30.0        # max points deducted from base score
+
+# ──────────────────────────────────────────────
+# ★ MOCK DATA TOGGLE
+# Set to True for frontend dev without hardware.
+# Set to False once the real Pico is connected.
+# ──────────────────────────────────────────────
+ENABLE_MOCK_DATA: bool = True
+
+# ──────────────────────────────────────────────
+# Mock sensor state + physical bounds
+# ──────────────────────────────────────────────
+# Each entry: (initial_value, min_bound, max_bound, random_walk_step)
+_MOCK_BOUNDS = {
+    "Temperature":  (22.0,   10.0,  38.0,  0.25),
+    "Humidity":     (50.0,    0.0, 100.0,  0.8),
+    "Pressure":     (1013.0, 960.0, 1060.0, 0.4),
+    "Light":        (400.0,   0.0, 1200.0, 12.0),
+    "Noise":        (32.0,    0.0, 100.0,  1.5),
+    "Particulates": (10.0,    0.0, 250.0,  2.0),
+    "Extra_VOCs":   (120.0,   0.0, 2000.0, 15.0),
+}
+
+_mock_readings: dict = {
+    k: v[0] for k, v in _MOCK_BOUNDS.items()
+}
+
+# Flag: True once a real POST /api/sensor-data has been received
+_real_data_received: bool = False
+
+# Holds the latest mock-derived RoomStatus for GET /api/current-status
+_mock_status: Optional["RoomStatus"] = None
 
 
 # ──────────────────────────────────────────────
@@ -116,11 +155,99 @@ def clamp_score(score: float, lo: int = 1, hi: int = 99) -> int:
 
 
 # ──────────────────────────────────────────────
+# Mock data helpers
+# ──────────────────────────────────────────────
+
+def _score_from_mock() -> int:
+    """
+    Run the current _mock_readings through the hybrid scoring pipeline:
+      MLP prediction on 6 base features  →  VOC penalty  →  clamped 1-99.
+
+    Falls back to the legacy weighted-average scorer if the MLP model
+    hasn't been trained yet.
+    """
+    from app.scoring import calculate_room_health_score  # avoid circular at top-level
+
+    if _mlp_model is not None and _mlp_scaler is not None:
+        feature_values = [
+            _mock_readings["Temperature"],
+            _mock_readings["Humidity"],
+            _mock_readings["Pressure"],
+            _mock_readings["Light"],
+            _mock_readings["Noise"],
+            _mock_readings["Particulates"],
+        ]
+        features_array = np.array(feature_values, dtype=np.float64).reshape(1, -1)
+        scaled = _mlp_scaler.transform(features_array)
+        base_score = float(_mlp_model.predict(scaled)[0])
+        penalty = compute_voc_penalty(_mock_readings["Extra_VOCs"])
+        return clamp_score(base_score - penalty)
+
+    # Fallback: map mock keys → legacy model field names
+    legacy_map = {
+        "temperature_c": _mock_readings["Temperature"],
+        "humidity_pct":  _mock_readings["Humidity"],
+        "pressure_hpa": _mock_readings["Pressure"],
+        "light_lux":    _mock_readings["Light"],
+        "noise_db":     _mock_readings["Noise"],
+        "pm25_ugm3":    _mock_readings["Particulates"],
+        "voc_ppb":      _mock_readings["Extra_VOCs"],
+    }
+    return calculate_room_health_score(legacy_map)
+
+
+async def _run_mock_sensor_loop() -> None:
+    """
+    Background coroutine that mutates _mock_readings every 2 seconds
+    using a random walk with a subtle sine-wave bias for realism.
+    """
+    global _mock_status
+    from app.models import SensorReading  # local import to avoid circular
+
+    logger.info("🧪 Mock sensor loop started — generating data every 2s")
+    tick = 0
+
+    while True:
+        for key, (_, lo, hi, step) in _MOCK_BOUNDS.items():
+            # Random walk component
+            delta = (random.random() - 0.5) * 2.0 * step
+            # Sine-wave bias: slow ~60s period, small amplitude
+            bias = math.sin(tick * 0.1 + hash(key) % 7) * step * 0.3
+            new_val = _mock_readings[key] + delta + bias
+            _mock_readings[key] = round(max(lo, min(hi, new_val)), 2)
+
+        # Build a RoomStatus from the mock readings
+        score = _score_from_mock()
+        _mock_status = RoomStatus(
+            reading=SensorReading(
+                temperature_c=_mock_readings["Temperature"],
+                humidity_pct=_mock_readings["Humidity"],
+                light_lux=_mock_readings["Light"],
+                noise_db=_mock_readings["Noise"],
+                pressure_hpa=_mock_readings["Pressure"],
+                pm25_ugm3=_mock_readings["Particulates"],
+                voc_ppb=_mock_readings["Extra_VOCs"],
+                timestamp_ms=int(time.time() * 1000),
+            ),
+            score=score,
+            last_updated=datetime.now(timezone.utc),
+            connected=False,  # no real hardware
+        )
+
+        logger.debug(
+            f"Mock tick {tick}: score={score}  temp={_mock_readings['Temperature']}°C  "
+            f"VOC={_mock_readings['Extra_VOCs']} ppb"
+        )
+        tick += 1
+        await asyncio.sleep(2)
+
+
+# ──────────────────────────────────────────────
 # Lifespan (startup / shutdown)
 # ──────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Start the serial listener and load ML artefacts at startup."""
+    """Start the serial listener, mock loop, and load ML artefacts."""
     global _mlp_model, _mlp_scaler
 
     logger.info("🚀 RoomPulse backend starting up")
@@ -143,9 +270,20 @@ async def lifespan(app: FastAPI):
         )
 
     # Start serial listener ───────────────────
-    task = asyncio.create_task(run_serial_listener())
+    serial_task = asyncio.create_task(run_serial_listener())
+
+    # Start mock sensor loop (if enabled) ─────
+    mock_task = None
+    if ENABLE_MOCK_DATA:
+        mock_task = asyncio.create_task(_run_mock_sensor_loop())
+    else:
+        logger.info("Mock data disabled — waiting for real hardware")
+
     yield
-    task.cancel()
+
+    serial_task.cancel()
+    if mock_task is not None:
+        mock_task.cancel()
     logger.info("🛑 RoomPulse backend shutting down")
 
 
@@ -189,13 +327,27 @@ async def current_status():
     """
     Return the latest sensor reading and computed Room Health Score.
 
+    If real hardware data has been POSTed, return that.
+    Otherwise, if ENABLE_MOCK_DATA is True, return the simulated
+    data from the background mock loop.
+
     The response includes:
     - `reading`: raw sensor values (null if no data yet)
     - `score`: composite health score 1–99 (0 = no data)
     - `last_updated`: UTC timestamp of last successful reading
     - `connected`: whether the serial port is active
     """
-    return get_current_status()
+    real = get_current_status()
+
+    # If we have real data from the Pico, always prefer it
+    if real.reading is not None:
+        return real
+
+    # Fall back to simulated data when mock is enabled
+    if ENABLE_MOCK_DATA and _mock_status is not None:
+        return _mock_status
+
+    return real
 
 
 @app.get("/api/analyze")
@@ -236,6 +388,9 @@ async def sensor_data(payload: SensorDataPayload):
     -------
     JSON with base_score, voc_penalty, final_score, and features echo.
     """
+    global _real_data_received
+    _real_data_received = True  # real hardware is online
+
     if _mlp_model is None or _mlp_scaler is None:
         raise HTTPException(
             status_code=503,
