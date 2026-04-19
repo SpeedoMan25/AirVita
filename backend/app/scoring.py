@@ -67,32 +67,32 @@ SLEEP_SENSOR_CONFIG: Dict[str, dict] = {
     "temperature_c": {
         "ideal_low": 16.0, "ideal_high": 19.0,
         "abs_min": 10.0,   "abs_max": 28.0,
-        "weight": 0.30,
+        "weight": 0.20,
     },
     "humidity_pct": {
         "ideal_low": 30.0, "ideal_high": 50.0,
         "abs_min": 10.0,   "abs_max": 80.0,
-        "weight": 0.10,
+        "weight": 0.05,
     },
     "light_lux": {
-        "ideal_low": 0.0,  "ideal_high": 5.0,
-        "abs_min": 0.0,    "abs_max": 50.0,
-        "weight": 0.30,
+        "ideal_low": 0.0,  "ideal_high": 2.0,
+        "abs_min": 0.0,    "abs_max": 20.0,
+        "weight": 0.45,
     },
     "noise_db": {
-        "ideal_low": 20.0, "ideal_high": 35.0,
-        "abs_min": 10.0,   "abs_max": 60.0,
-        "weight": 0.20,
+        "ideal_low": 20.0, "ideal_high": 30.0,
+        "abs_min": 10.0,   "abs_max": 50.0,
+        "weight": 0.30,
     },
     "pm25_ugm3": {
         "ideal_low": 0.0,  "ideal_high": 15.0,
         "abs_min": 0.0,    "abs_max": 50.0,
-        "weight": 0.05,
+        "weight": 0.0,
     },
     "voc_ppb": {
         "ideal_low": 0.0,  "ideal_high": 300.0,
         "abs_min": 0.0,    "abs_max": 1000.0,
-        "weight": 0.05,
+        "weight": 0.0,
     },
 }
 
@@ -113,24 +113,24 @@ WORK_SENSOR_CONFIG: Dict[str, dict] = {
         "weight": 0.05,
     },
     "light_lux": {
-        "ideal_low": 250.0, "ideal_high": 600.0,
-        "abs_min": 100.0,   "abs_max": 1500.0,
-        "weight": 0.25,
+        "ideal_low": 400.0, "ideal_high": 800.0,
+        "abs_min": 150.0,   "abs_max": 1500.0,
+        "weight": 0.40,
     },
     "noise_db": {
-        "ideal_low": 20.0, "ideal_high": 55.0,
-        "abs_min": 10.0,   "abs_max": 85.0,
-        "weight": 0.25,
+        "ideal_low": 20.0, "ideal_high": 50.0,
+        "abs_min": 10.0,   "abs_max": 75.0,
+        "weight": 0.35,
     },
     "pm25_ugm3": {
         "ideal_low": 0.0,  "ideal_high": 15.0,
         "abs_min": 0.0,    "abs_max": 60.0,
-        "weight": 0.15,
+        "weight": 0.05,
     },
     "voc_ppb": {
         "ideal_low": 0.0,  "ideal_high": 300.0,
         "abs_min": 0.0,    "abs_max": 1200.0,
-        "weight": 0.15,
+        "weight": 0.0,
     },
 }
 
@@ -139,34 +139,34 @@ WORK_SENSOR_CONFIG: Dict[str, dict] = {
 # Focused on dimmer light, higher temperature tolerance, and high noise tolerance
 FUN_SENSOR_CONFIG: Dict[str, dict] = {
     "temperature_c": {
-        "ideal_low": 21.0, "ideal_high": 25.0,
+        "ideal_low": 21.0, "ideal_high": 26.0,
         "abs_min": 15.0,   "abs_max": 32.0,
-        "weight": 0.10,
+        "weight": 0.20,
     },
     "humidity_pct": {
         "ideal_low": 30.0, "ideal_high": 60.0,
         "abs_min": 10.0,   "abs_max": 90.0,
-        "weight": 0.10,
+        "weight": 0.05,
     },
     "light_lux": {
-        "ideal_low": 50.0,  "ideal_high": 250.0,
-        "abs_min": 0.0,     "abs_max": 1000.0,
+        "ideal_low": 10.0,  "ideal_high": 150.0,
+        "abs_min": 0.0,     "abs_max": 800.0,
         "weight": 0.20,
     },
     "noise_db": {
-        "ideal_low": 40.0, "ideal_high": 80.0,
-        "abs_min": 20.0,   "abs_max": 100.0,
-        "weight": 0.30,
+        "ideal_low": 55.0, "ideal_high": 85.0,
+        "abs_min": 35.0,   "abs_max": 110.0,
+        "weight": 0.40,
     },
     "pm25_ugm3": {
         "ideal_low": 0.0,  "ideal_high": 25.0,
         "abs_min": 0.0,    "abs_max": 100.0,
-        "weight": 0.15,
+        "weight": 0.10,
     },
     "voc_ppb": {
         "ideal_low": 0.0,  "ideal_high": 400.0,
         "abs_min": 0.0,    "abs_max": 1500.0,
-        "weight": 0.15,
+        "weight": 0.05,
     },
 }
 

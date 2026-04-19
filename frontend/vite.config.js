@@ -6,7 +6,7 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 5173,
-    allowedHosts: ['twelve-thompson-overhead-homework.trycloudflare.com', 'localhost', '127.0.0.1'],
+    allowedHosts: true,
     proxy: {
       '/api': {
         target: 'http://backend:8000',
