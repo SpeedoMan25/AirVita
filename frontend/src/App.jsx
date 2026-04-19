@@ -290,19 +290,25 @@ function StatusCard({ sensorKey, value, history, unitSystem, onSelect, isSelecte
     return conv ? conv.convert(value) : value
   }, [value, sensorKey, unitSystem])
 
-  const displayVal = numericVal !== null ? numericVal : '—'
+  const isNoRead = value === null || value === undefined
+  const displayVal = !isNoRead ? numericVal : '—'
   const unit = CONVERSIONS[sensorKey]?.[unitSystem]?.unit || meta.unit
-  const status = value != null ? meta.getStatus(value) : null
+  const status = !isNoRead ? meta.getStatus(value) : 'NO READ'
+  const sparkColor = isNoRead ? '#94a3b8' : meta.sparkColor
+  const sparkFill = isNoRead ? '#f1f5f9' : meta.sparkFill
+  const iconColor = isNoRead ? '#64748b' : meta.iconColor
+  const iconBg = isNoRead ? '#f1f5f9' : meta.iconBg
+  const iconBorder = isNoRead ? '#e2e8f0' : meta.iconBorder
 
   return (
     <div
       onClick={() => onSelect(sensorKey)}
       style={{
         background: '#ffffff',
-        border: isSelected ? `2px solid ${meta.iconColor}` : '1px solid #e2e8f0',
+        border: isSelected ? `2px solid ${isNoRead ? '#cbd5e1' : meta.iconColor}` : '1px solid #e2e8f0',
         borderRadius: '16px',
         padding: isSelected ? '23px' : '24px', /* compensate for thicker border */
-        boxShadow: isSelected ? `0 0 0 3px ${meta.iconBg}` : '0 1px 3px rgba(0,0,0,0.04)',
+        boxShadow: isSelected ? `0 0 0 3px ${iconBg}` : '0 1px 3px rgba(0,0,0,0.04)',
         position: 'relative',
         overflow: 'hidden',
         display: 'flex',
@@ -316,14 +322,15 @@ function StatusCard({ sensorKey, value, history, unitSystem, onSelect, isSelecte
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px' }}>
         <div style={{
           padding: '10px', borderRadius: '14px',
-          background: meta.iconBg, border: `1px solid ${meta.iconBorder}`,
+          background: iconBg, border: `1px solid ${iconBorder}`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
+          transition: 'all 0.3s ease',
         }}>
-          <IconComp size={20} color={meta.iconColor} />
+          <IconComp size={20} color={iconColor} />
         </div>
         <div style={{
           padding: '5px', borderRadius: '8px',
-          color: isSelected ? meta.iconColor : '#cbd5e1',
+          color: isSelected ? (isNoRead ? '#64748b' : meta.iconColor) : '#cbd5e1',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
           <Info size={14} />
@@ -340,10 +347,10 @@ function StatusCard({ sensorKey, value, history, unitSystem, onSelect, isSelecte
 
       {/* Value + Unit (animated) */}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginBottom: '6px' }}>
-        <span style={{ fontSize: '32px', fontWeight: 900, color: '#1e293b', lineHeight: 1.1 }}>
+        <span style={{ fontSize: '32px', fontWeight: 900, color: isNoRead ? '#cbd5e1' : '#1e293b', lineHeight: 1.1 }}>
           {typeof numericVal === 'number' ? <AnimatedNumber value={numericVal} decimals={1} /> : displayVal}
         </span>
-        <span style={{ fontSize: '14px', fontWeight: 600, color: '#94a3b8' }}>{unit}</span>
+        <span style={{ fontSize: '14px', fontWeight: 600, color: '#94a3b8', opacity: isNoRead ? 0.5 : 1 }}>{unit}</span>
       </div>
 
       {/* Status badge */}
@@ -352,7 +359,8 @@ function StatusCard({ sensorKey, value, history, unitSystem, onSelect, isSelecte
           <span style={{
             fontSize: '10px', fontWeight: 700, textTransform: 'uppercase',
             letterSpacing: '0.1em', padding: '3px 8px', borderRadius: '6px',
-            background: meta.iconBg, color: meta.iconColor,
+            background: iconBg, color: iconColor,
+            transition: 'all 0.3s ease',
           }}>
             {status}
           </span>
@@ -368,13 +376,13 @@ function StatusCard({ sensorKey, value, history, unitSystem, onSelect, isSelecte
           <AreaChart data={history}>
             <defs>
               <linearGradient id={`grad-${sensorKey}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={meta.sparkColor} stopOpacity={0.3} />
-                <stop offset="100%" stopColor={meta.sparkColor} stopOpacity={0} />
+                <stop offset="0%" stopColor={sparkColor} stopOpacity={isNoRead ? 0.15 : 0.3} />
+                <stop offset="100%" stopColor={sparkColor} stopOpacity={0} />
               </linearGradient>
             </defs>
             <Area
               type="monotone" dataKey={sensorKey}
-              stroke={meta.sparkColor} fill={`url(#grad-${sensorKey})`}
+              stroke={sparkColor} fill={`url(#grad-${sensorKey})`}
               strokeWidth={2}
               isAnimationActive={true}
               animationDuration={600}

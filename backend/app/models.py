@@ -14,13 +14,13 @@ class RoomContext(BaseModel):
 
 class SensorReading(BaseModel):
     """Raw sensor payload as received from the Pico."""
-    temperature_c: float = Field(..., description="Temperature in Celsius")
-    humidity_pct: float = Field(..., description="Relative humidity percentage")
-    light_lux: float = Field(..., description="Light level in lux")
-    noise_db: float = Field(..., description="Noise level in decibels")
-    pressure_hpa: float = Field(..., description="Atmospheric pressure in hPa")
-    pm25_ugm3: float = Field(..., description="PM2.5 particulate matter in µg/m³")
-    voc_ppb: float = Field(..., description="Volatile organic compounds in ppb")
+    temperature_c: Optional[float] = Field(None, description="Temperature in Celsius")
+    humidity_pct: Optional[float] = Field(None, description="Relative humidity percentage")
+    light_lux: Optional[float] = Field(None, description="Light level in lux")
+    noise_db: Optional[float] = Field(None, description="Noise level in decibels")
+    pressure_hpa: Optional[float] = Field(None, description="Atmospheric pressure in hPa")
+    pm25_ugm3: Optional[float] = Field(None, description="PM2.5 particulate matter in µg/m³")
+    voc_ppb: Optional[float] = Field(None, description="Volatile organic compounds in ppb")
     pot_pct: float = Field(0.0, description="Potentiometer setting percentage")
     timestamp_ms: Optional[int] = Field(None, description="Pico tick timestamp")
 

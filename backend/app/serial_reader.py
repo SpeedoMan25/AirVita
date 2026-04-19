@@ -62,6 +62,15 @@ def _generate_mock_reading() -> str:
         _mock_state[key] = max(lo, min(hi, round(_mock_state[key] + delta, 2)))
 
     payload = dict(_mock_state)
+    
+    # Simulation: Occasionally lose data on some sensors
+    # Roughly every ~10s (5 intervals of 2s)
+    if random.random() < 0.2:
+        if random.random() < 0.5:
+            del payload["voc_ppb"]
+        else:
+            del payload["pm25_ugm3"]
+
     payload["timestamp_ms"] = int(time.time() * 1000)
     return json.dumps(payload)
 
