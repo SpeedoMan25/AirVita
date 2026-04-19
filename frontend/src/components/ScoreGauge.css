@@ -5,13 +5,30 @@
 .score-card {
   background: #fff;
   border-radius: var(--r-xl);
-  padding: var(--gap-lg) var(--gap-md);
-  box-shadow: var(--shadow-md);
+  padding: var(--gap-md);
+  box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--gap-sm);
+  gap: var(--gap-xs);
   animation: popIn 0.45s ease;
+  transition: all 0.25s ease;
+  border: 2px solid transparent;
+}
+
+.score-card--active {
+  border-color: var(--primary);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+
+.score-card:hover {
+  border-color: #eee;
+  transform: translateY(-2px);
+}
+
+.score-card--active:hover {
+  border-color: var(--primary);
 }
 
 /* ── Top row ── */
@@ -38,8 +55,8 @@
 /* ── Gauge arc ── */
 .score-card__gauge {
   position: relative;
-  width: 240px;
-  height: 130px;
+  width: 160px;
+  height: 90px;
   overflow: hidden;
 }
 
@@ -76,11 +93,12 @@
 }
 
 .score-card__number {
-  font-size: 3.5rem;
+  font-size: 2.2rem;
   font-weight: 800;
   line-height: 1;
   letter-spacing: -0.04em;
   transition: color 0.5s ease;
+  color: var(--text-primary);
 }
 
 .score-card__of {

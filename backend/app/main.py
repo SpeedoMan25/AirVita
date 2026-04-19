@@ -12,7 +12,12 @@ from contextlib import asynccontextmanager
 import pandas as pd
 from app.models import RoomStatus, SensorReading, ScoreBreakdown
 from app.gemini import generate_analysis
-from app.scoring import calculate_sleep_score
+from app.scoring import (
+    calculate_sleep_score_with_breakdown,
+    calculate_study_score_with_breakdown,
+    calculate_work_score_with_breakdown,
+    calculate_fun_score_with_breakdown
+)
 
 # Configuration
 MODEL_DIR = Path(__file__).parent.parent / "model"
@@ -22,12 +27,22 @@ SCALER_PATH = MODEL_DIR / "scaler.pkl"
 # Global variables for model, scaler, and state
 model = None
 scaler = None
-latest_status = RoomStatus(reading=None, score=0, sleep_score=0, last_updated=None, connected=False)
+latest_status = RoomStatus(
+    reading=None,
+    score=0,
+    sleep_score=0,
+    study_score=0,
+    work_score=0,
+    fun_score=0,
+    last_updated=None,
+    connected=False
+)
 
 # Simulation State
 AUTO_CYCLE = False 
 CURRENT_SCENARIO_INDEX = 0
-ACTIVE_SCENARIO_ID = "ideal" # Start with ideal
+ACTIVE_SCENARIO_ID = "ideal" 
+CURRENT_SOURCE = "live" # 'live' or 'simulation'
 
 # Load Simulation Scenarios from JSON
 SCENARIOS_FILE = Path(__file__).parent / "scenarios.json"
@@ -148,19 +163,16 @@ async def lifespan(app: FastAPI):
 
 async def run_data_generator():
     """
-    Background job that either reads serial or generates mock scenarios.
-    Updates the global 'latest_status'.
+    Background job that generates mock data if CURRENT_SOURCE is 'simulation'.
     """
-    global latest_status, AUTO_CYCLE, MANUAL_SCENARIO_EXPIRY
-    use_mock = os.getenv("MOCK_SERIAL", "false").lower() in ("true", "1", "yes")
+    global latest_status, AUTO_CYCLE, CURRENT_SOURCE
+    import random
     
-    if use_mock:
-        print("🧪 Simulation Mode: Started with Jitter.")
-        import random
-        
-        last_cycle_time = 0
-        
-        while True:
+    print("🛰️ Data Generator Task Started.")
+    last_cycle_time = 0
+    
+    while True:
+        if CURRENT_SOURCE == "simulation":
             now = datetime.now(timezone.utc).timestamp()
             
             # 1. Update Scenario if Auto-cycling is ON
@@ -172,43 +184,58 @@ async def run_data_generator():
                 print(f"♻️ Auto-cycle: Switched to {ACTIVE_SCENARIO_ID}")
 
             # 2. Get current base scenario
-            s = next((scen for scen in SIMULATION_SCENARIOS if scen["id"] == ACTIVE_SCENARIO_ID), SIMULATION_SCENARIOS[0])
+            s = next((scen for scen in SIMULATION_SCENARIOS if scen["id"] == ACTIVE_SCENARIO_ID), None)
             
-            # 3. Apply Jitter (±1.5%)
-            def jitter(val):
-                return val * random.uniform(0.985, 1.015)
+            if s:
+                # 3. Apply Jitter (±1.5%)
+                def jitter(val):
+                    return val * random.uniform(0.985, 1.015)
 
-            payload = {
-                "humidity": jitter(s["inputs"]["humidity"]), 
-                "pressure": jitter(s["inputs"]["pressure"]), 
-                "light": jitter(s["inputs"]["light"]), 
-                "temperature": jitter(s["inputs"]["temperature"]),
-                "sound_high": 10.0, 
-                "sound_mid": 10.0, 
-                "sound_low": 10.0, 
-                "sound_amp": jitter(s["inputs"]["noise"]),
-                "vocs": jitter(s["inputs"]["vocs"]), 
-                "particulates": jitter(s["inputs"]["particulates"])
-            }
-            
-            update_status_from_dict(payload)
-            await asyncio.sleep(2) # Refresh live data every 2 seconds
-    else:
-        print("🔌 Production Mode: Waiting for serial data...")
-        pass
+                payload = {
+                    "humidity": jitter(s["inputs"]["humidity"]), 
+                    "pressure": jitter(s["inputs"]["pressure"]), 
+                    "light": jitter(s["inputs"]["light"]), 
+                    "temperature": jitter(s["inputs"]["temperature"]),
+                    "sound_high": 10.0, 
+                    "sound_mid": 10.0, 
+                    "sound_low": 10.0, 
+                    "sound_amp": jitter(s["inputs"]["noise"]),
+                    "vocs": jitter(s["inputs"]["vocs"]), 
+                    "particulates": jitter(s["inputs"]["particulates"])
+                }
+                update_status_from_dict(payload)
+        
+        await asyncio.sleep(2)
 
 def update_status_from_dict(payload_data: dict):
     """Utility to run prediction and update latest_status."""
     global latest_status
     results = predict_score(payload_data)
     if "error" not in results:
+        reading = SensorReading(
+            **results["reading"],
+            timestamp_ms=int(datetime.now(timezone.utc).timestamp() * 1000)
+        )
+        
+        # Calculate sub-activity scores with math internal
+        sleep_res = calculate_sleep_score_with_breakdown(results["reading"])
+        study_res = calculate_study_score_with_breakdown(results["reading"])
+        work_res = calculate_work_score_with_breakdown(results["reading"])
+        fun_res = calculate_fun_score_with_breakdown(results["reading"])
+
         latest_status = RoomStatus(
-            reading=SensorReading(
-                **results["reading"],
-                timestamp_ms=int(datetime.now(timezone.utc).timestamp() * 1000)
-            ),
+            reading=reading,
             score=results["final_score"],
-            sleep_score=calculate_sleep_score(results["reading"]),
+            sleep_score=sleep_res["score"],
+            study_score=study_res["score"],
+            work_score=work_res["score"],
+            fun_score=fun_res["score"],
+            activity_breakdowns={
+                "sleep": sleep_res["breakdown"],
+                "study": study_res["breakdown"],
+                "work": work_res["breakdown"],
+                "fun": fun_res["breakdown"],
+            },
             breakdown=ScoreBreakdown(
                 base_mlp_score=results["base_score"],
                 voc_penalty=results["voc_penalty"],
@@ -267,7 +294,14 @@ async def analyze_room():
     
     # Format the reading for Gemini
     reading_dict = latest_status.reading.model_dump()
-    analysis = generate_analysis(reading_dict, latest_status.score, latest_status.sleep_score)
+    scores = {
+        "health": latest_status.score,
+        "sleep": latest_status.sleep_score,
+        "study": latest_status.study_score,
+        "work": latest_status.work_score,
+        "fun": latest_status.fun_score
+    }
+    analysis = generate_analysis(reading_dict, scores)
     return analysis
 
 @app.post("/api/sensor-data")
@@ -297,12 +331,18 @@ class ScenarioSelect(BaseModel):
 @app.post("/api/scenarios/select")
 async def select_scenario(selection: ScenarioSelect):
     """Manually triggers a specific scenario and stops auto-cycling."""
-    global AUTO_CYCLE, ACTIVE_SCENARIO_ID
+    global AUTO_CYCLE, ACTIVE_SCENARIO_ID, CURRENT_SOURCE
     
+    if selection.id == "live":
+        CURRENT_SOURCE = "live"
+        print("🔌 Source Switched: LIVE (Hardware)")
+        return {"status": "success", "source": "live"}
+
     scenario = next((s for s in SIMULATION_SCENARIOS if s["id"] == selection.id), None)
     if not scenario:
         raise HTTPException(status_code=404, detail="Scenario not found")
     
+    CURRENT_SOURCE = "simulation"
     ACTIVE_SCENARIO_ID = selection.id
     AUTO_CYCLE = False # Lock to this scenario
     
