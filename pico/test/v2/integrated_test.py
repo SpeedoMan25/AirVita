@@ -66,12 +66,30 @@ SAMPLES_PER_READ = 256
 read_buf = bytearray(SAMPLES_PER_READ * 8)
 
 def parse_pms_data(data):
-    """Parses 32-byte PMS5003 packet for PM 2.5 concentration."""
+    """Parses 32-byte PMS5003 packet for PM values and particle counts."""
     if len(data) < 32: return None
     if data[0] != 0x42 or data[1] != 0x4D: return None
-    # PM2.5 atmospheric is at bytes 12-13
-    pm25 = (data[12] << 8) | data[13]
-    return pm25
+    
+    # Checksum verification
+    check = sum(data[:30])
+    calc_check = (data[30] << 8) | data[31]
+    if check != calc_check:
+        return None
+
+    return {
+        "pm10_std":  (data[4] << 8) | data[5],
+        "pm25_std":  (data[6] << 8) | data[7],
+        "pm100_std": (data[8] << 8) | data[9],
+        "pm10_atm":  (data[10] << 8) | data[11],
+        "pm25_atm":  (data[12] << 8) | data[13],
+        "pm100_atm": (data[14] << 8) | data[15],
+        "pc_03um":   (data[16] << 8) | data[17],
+        "pc_05um":   (data[18] << 8) | data[19],
+        "pc_10um":   (data[20] << 8) | data[21],
+        "pc_25um":   (data[22] << 8) | data[23],
+        "pc_50um":   (data[24] << 8) | data[25],
+        "pc_100um":  (data[26] << 8) | data[27],
+    }
 
 def get_clean_samples():
     """Reads I2S samples and filters hardware glitches."""
@@ -119,7 +137,8 @@ def run_integrated():
 
     # UART for PMS5003
     pms_uart = machine.UART(UART_ID, baudrate=9600, tx=machine.Pin(PMS_TX_PIN), rx=machine.Pin(PMS_RX_PIN))
-    pm25 = 0
+    pms_data = {}
+    pms_packets_read = 0
     
     baseline = 0
     last_env_update = 0
@@ -164,13 +183,19 @@ def run_integrated():
                 data = env_sensor.read_all()
                 lux = light_sensor.read() if light_sensor else 0
                 
-                # Check for Air Quality (PMS5003) - Non-blocking
-                if pms_uart.any() >= 32:
-                    raw_pms = pms_uart.read(32)
-                    parsed_pm = parse_pms_data(raw_pms)
-                    if parsed_pm is not None:
-                        pm25 = parsed_pm
-
+                # Check for Air Quality (PMS5003)
+                # Flush buffer and find the LAST valid packet (freshest data)
+                if pms_uart.any() > 0:
+                    buffer = pms_uart.read()
+                    # Look for 0x42 0x4D header from the end
+                    for i in range(len(buffer) - 31, -1, -1):
+                        if buffer[i] == 0x42 and buffer[i+1] == 0x4D:
+                            packet = buffer[i:i+32]
+                            parsed = parse_pms_data(packet)
+                            if parsed:
+                                pms_data = parsed
+                                pms_packets_read += 1
+                                break
                 if data:
                     t = data["temperature"]
                     h = data["humidity"]
@@ -206,10 +231,26 @@ def run_integrated():
             print(f"         RMS: {int(rms):7d} | Peak: {int(peak):7d}{glitch_indicator}")
             print("-" * 60)
             
-            # [ATMOSPHERE & LIGHT BLOCK]
-            # Categorize PM2.5 roughly
-            aqi_label = "EXCELLENT" if pm25 <= 12 else "GOOD" if pm25 <= 35 else "POOR"
-            print(f"[AIR]    PM2.5: {pm25:3d} ug/m3 (Status: {aqi_label:9s})")
+            # [AIR QUALITY BLOCK]
+            pm25_a = pms_data.get("pm25_atm", 0)
+            pm10_a = pms_data.get("pm10_atm", 0)
+            pm100_a = pms_data.get("pm100_atm", 0)
+            
+            pm25_s = pms_data.get("pm25_std", 0)
+            pm10_s = pms_data.get("pm10_std", 0)
+            pm100_s = pms_data.get("pm100_std", 0)
+            
+            aqi_label = "EXCELLENT" if pm25_a <= 12 else "GOOD" if pm25_a <= 35 else "POOR"
+            
+            print(f"[AIR]    ATM (ug/m3): {pm10_a:3d} / {pm25_a:3d} / {pm100_a:3d} (AQI: {aqi_label})")
+            print(f"[AIR]    STD (ug/m3): {pm10_s:3d} / {pm25_s:3d} / {pm100_s:3d}")
+            
+            # Individual Particle Counts
+            p03 = pms_data.get("pc_03um", 0)
+            p05 = pms_data.get("pc_05um", 0)
+            p10 = pms_data.get("pc_10um", 0)
+            p25 = pms_data.get("pc_25um", 0)
+            print(f"[PART.]  >0.3u: {p03:5d} | >0.5u: {p05:5d} | >1.0u: {p10:5d} | Packets: {pms_packets_read}")
             print(f"[LIGHT]  Lux:   {lux:7.1f} lx")
             print("-" * 60)
             
