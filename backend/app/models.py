@@ -38,7 +38,6 @@ class RoomStatus(BaseModel):
     reading: Optional[SensorReading] = None
     score: int = Field(0, ge=0, le=99, description="Room Health Score (1-99, 0 = no data)")
     sleep_score: int = Field(0, ge=0, le=99, description="Sleeping Conditions Score (1-99, 0 = no data)")
-    study_score: int = Field(0, ge=0, le=99, description="Study Conditions Score (1-99, 0 = no data)")
     work_score: int = Field(0, ge=0, le=99, description="Work Conditions Score (1-99, 0 = no data)")
     fun_score: int = Field(0, ge=0, le=99, description="Fun/Social Conditions Score (1-99, 0 = no data)")
     breakdown: Optional[ScoreBreakdown] = None

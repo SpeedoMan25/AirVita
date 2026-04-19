@@ -97,40 +97,6 @@ SLEEP_SENSOR_CONFIG: Dict[str, dict] = {
 }
 
 
-# Study-specific scoring configuration
-# Focused on high light levels, low noise, and cool temperatures for alertness
-STUDY_SENSOR_CONFIG: Dict[str, dict] = {
-    "temperature_c": {
-        "ideal_low": 19.0, "ideal_high": 22.0,
-        "abs_min": 15.0,   "abs_max": 28.0,
-        "weight": 0.15,
-    },
-    "humidity_pct": {
-        "ideal_low": 35.0, "ideal_high": 50.0,
-        "abs_min": 10.0,   "abs_max": 80.0,
-        "weight": 0.05,
-    },
-    "light_lux": {
-        "ideal_low": 300.0, "ideal_high": 700.0,
-        "abs_min": 50.0,    "abs_max": 2000.0,
-        "weight": 0.35,
-    },
-    "noise_db": {
-        "ideal_low": 20.0, "ideal_high": 45.0,
-        "abs_min": 10.0,   "abs_max": 75.0,
-        "weight": 0.25,
-    },
-    "pm25_ugm3": {
-        "ideal_low": 0.0,  "ideal_high": 12.0,
-        "abs_min": 0.0,    "abs_max": 50.0,
-        "weight": 0.10,
-    },
-    "voc_ppb": {
-        "ideal_low": 0.0,  "ideal_high": 200.0,
-        "abs_min": 0.0,    "abs_max": 1000.0,
-        "weight": 0.10,
-    },
-}
 
 
 # Work-specific scoring configuration
@@ -274,11 +240,6 @@ def calculate_sleep_score_with_breakdown(readings: dict) -> Dict:
     return calculate_weighted_score_with_breakdown(readings, SLEEP_SENSOR_CONFIG)
 
 
-def calculate_study_score_with_breakdown(readings: dict) -> Dict:
-    """
-    Calculate the Study Conditions Score (1–99) with breakdown.
-    """
-    return calculate_weighted_score_with_breakdown(readings, STUDY_SENSOR_CONFIG)
 
 
 def calculate_work_score_with_breakdown(readings: dict) -> Dict:
