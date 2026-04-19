@@ -1,9 +1,10 @@
 import React, { useRef, useEffect, useState } from 'react';
+import { CheckCircle2 } from 'lucide-react';
 import './RoomScanner.css';
 
 const API_BASE = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || '');
 
-export default function RoomScanner({ onClose }) {
+export default function RoomScanner({ onClose, deviceId }) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const [result, setResult] = useState({ room: 'Initializing...', confidence: 0 });
@@ -30,7 +31,7 @@ export default function RoomScanner({ onClose }) {
           fetch(`${API_BASE}/api/pairing/status`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: 'connected' })
+            body: JSON.stringify({ device_id: deviceId, status: 'connected' })
           }).catch(console.error);
         }
       } catch (err) {
@@ -66,7 +67,7 @@ export default function RoomScanner({ onClose }) {
         const res = await fetch(`${API_BASE}/api/scan-room`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image: base64Image })
+          body: JSON.stringify({ image: base64Image, device_id: deviceId })
         });
 
         if (res.ok) {
@@ -158,14 +159,14 @@ export default function RoomScanner({ onClose }) {
                       await fetch(`${API_BASE}/api/scan-room`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ image: base64Image, force_lock: true })
+                        body: JSON.stringify({ image: base64Image, device_id: deviceId, force_lock: true })
                       });
                       
                       // Inform backend pairing is done
                       await fetch(`${API_BASE}/api/pairing/status`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ status: 'completed' })
+                        body: JSON.stringify({ device_id: deviceId, status: 'completed' })
                       });
 
                       setIsLocked(true);

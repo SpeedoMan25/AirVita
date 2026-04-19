@@ -9,10 +9,10 @@ if [ -z "$IP" ]; then
     IP="127.0.0.1"
 fi
 
-echo "🚀 Starting AirVita and opening browser to: https://$IP:5173"
+echo "🚀 Starting AirVita and opening browser to: http://$IP:5173"
 
 # Open browser in the background after a 6-second delay to let Vite + Backend start
-(sleep 6 && open "https://$IP:5173") &
+(sleep 6 && open "http://$IP:5173") &
 
 # Export the IP so the backend Python container can read it and display the correct IP in the logs
 export HOST_IP="$IP"

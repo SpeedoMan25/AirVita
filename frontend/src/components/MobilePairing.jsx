@@ -4,36 +4,18 @@ import './MobilePairing.css';
 
 const API_BASE = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || '');
 
-export default function MobilePairing({ onClose }) {
+export default function MobilePairing({ onClose, deviceId }) {
   const [info, setInfo] = useState({ ip: 'Loading...', url: '' });
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const port = window.location.port ? `:${window.location.port}` : '';
-    const host = window.location.hostname;
-
-    // If already on a network IP, use it directly
-    if (host !== 'localhost' && host !== '127.0.0.1' && !host.includes('lvh.me') && host !== 'localhost.localdomain') {
-      setInfo({ ip: host, url: `https://${host}${port}#scan` });
-      return;
-    }
-
-    // Try to auto-detect network IP from backend
-    fetch(`${API_BASE}/api/connection-info`)
-      .then(r => r.json())
-      .then(data => {
-        if (data.ip && data.ip !== '127.0.0.1') {
-          setInfo({ ip: data.ip, url: `https://${data.ip}${port}#scan` });
-        } else {
-          setInfo({ ip: host, url: `https://${host}${port}#scan` });
-          setError("Could not detect network IP. Make sure your PC and phone are on the same Wi-Fi. Try accessing the dashboard using your PC's IP address instead of localhost.");
-        }
-      })
-      .catch(() => {
-        setInfo({ ip: host, url: `https://${host}${port}#scan` });
-        setError("Could not detect network IP. Make sure your PC and phone are on the same Wi-Fi. Try accessing the dashboard using your PC's IP address instead of localhost.");
-      });
-  }, []);
+    // USING CLOUDFLARE TUNNEL FOR TRUSTED HTTPS (Solves Black Screen)
+    const base = 'twelve-thompson-overhead-homework.trycloudflare.com';
+    setInfo({ 
+      ip: base, 
+      url: `https://${base}?device_id=${deviceId}#scan` 
+    });
+  }, [deviceId]);
 
   return (
     <div className="pairing-overlay" onClick={onClose}>
@@ -68,10 +50,8 @@ export default function MobilePairing({ onClose }) {
 
             <div className="pairing-instructions">
               <ol>
-                <li>Ensure your phone is on the <strong>same Wi-Fi</strong>.</li>
-                <li>Scan the code with your phone's camera.</li>
-                <li>Accept the browser security warning ("Advanced" &rarr; "Proceed").</li>
-                <li>Allow camera permissions.</li>
+                <li>Scan the QR code with your phone's camera.</li>
+                <li>Approve the camera permission prompt.</li>
               </ol>
               <div className="pairing-url-box">
                 Or visit: <strong>{info.url}</strong>

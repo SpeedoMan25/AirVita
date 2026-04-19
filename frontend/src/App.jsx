@@ -336,6 +336,8 @@ export default function App() {
   const [analysisCooldown, setAnalysisCooldown] = useState(0)
 
   const [activeSensorKey, setActiveSensorKey] = useState('activity_fun')
+  const [activeMonitorId, setActiveMonitorId] = useState('simulation')
+  const [monitorsList, setMonitorsList] = useState([])
   const [isTechOpen, setIsTechOpen] = useState(false)
   const [unitSystem, setUnitSystem] = useState('imperial')
   const [isScannerOpen, setIsScannerOpen] = useState(false)
@@ -344,7 +346,7 @@ export default function App() {
   /* ── Data Fetching ── */
   const fetchStatus = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/current-status`)
+      const res = await fetch(`${API_BASE}/api/current-status?device_id=${activeMonitorId}`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
       setStatus(data)
@@ -364,7 +366,25 @@ export default function App() {
     } catch (err) {
       setError(`Unable to reach backend: ${err.message}`)
     }
-  }, [])
+  }, [activeMonitorId])
+
+  const fetchMonitors = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/monitors`)
+      if (!res.ok) return
+      const data = await res.json()
+      setMonitorsList(data)
+      
+      // Auto-select first Live monitor if currently on simulation
+      if (activeMonitorId === 'simulation') {
+        const firstLive = data.find(m => m.id !== 'simulation' && m.id !== 'weather')
+        if (firstLive) {
+          setActiveMonitorId(firstLive.id)
+          console.log(`🔌 Auto-switched to Live Monitor: ${firstLive.name}`)
+        }
+      }
+    } catch (err) { console.error(err) }
+  }, [activeMonitorId])
 
   const fetchScenarios = useCallback(async () => {
     try {
@@ -393,7 +413,7 @@ export default function App() {
     setAnalysisLoading(true)
     setAnalysisError(null)
     try {
-      const res = await fetch(`${API_BASE}/api/analyze`)
+      const res = await fetch(`${API_BASE}/api/analyze?device_id=${activeMonitorId}`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       setAnalysis(await res.json())
       
@@ -404,7 +424,7 @@ export default function App() {
     } finally {
       setAnalysisLoading(false)
     }
-  }, [analysisCooldown])
+  }, [analysisCooldown, activeMonitorId])
 
   useEffect(() => {
     if (analysisCooldown > 0) {
@@ -415,21 +435,27 @@ export default function App() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    const urlDevId = params.get('device_id');
+    if (urlDevId) setActiveMonitorId(urlDevId);
+    
     if (params.get('scanner') === 'true') {
       setIsScannerOpen(true);
       window.history.replaceState({}, '', window.location.pathname);
     }
     fetchStatus()
     fetchScenarios()
+    fetchMonitors()
     const statusInterval = setInterval(fetchStatus, POLL_INTERVAL_MS)
+    const monitorInterval = setInterval(fetchMonitors, 5000)
     const scenarioInterval = setInterval(() => {
       if (scenarios.length === 0) fetchScenarios()
     }, 5000)
     return () => {
       clearInterval(statusInterval)
+      clearInterval(monitorInterval)
       clearInterval(scenarioInterval)
     }
-  }, [fetchStatus, fetchScenarios])
+  }, [fetchStatus, fetchScenarios, fetchMonitors])
 
   const reading = status?.reading ?? null
   const connected = status?.connected ?? false
@@ -453,7 +479,11 @@ export default function App() {
 
   const resetPairing = async () => {
     try {
-      await fetch(`${API_BASE}/api/pairing/reset`, { method: 'POST' })
+      await fetch(`${API_BASE}/api/pairing/reset`, { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ device_id: activeMonitorId }), 
+      })
       setAnalysis({ summary: '', flags: [] })
       fetchStatus()
     } catch(err) {}
@@ -485,9 +515,14 @@ export default function App() {
 
   // If accessed via #scan hash (mobile phone from QR code), show only the scanner
   if (window.location.hash === '#scan') {
+    const params = new URLSearchParams(window.location.search);
+    const mobileDevId = params.get('device_id') || 'simulation';
     return (
       <div className="h-screen w-full bg-[#09090b]">
-        <RoomScanner onClose={() => { window.location.hash = ''; window.location.reload(); }} />
+        <RoomScanner 
+          deviceId={mobileDevId}
+          onClose={() => { window.location.hash = ''; window.location.reload(); }} 
+        />
       </div>
     )
   }
@@ -505,9 +540,9 @@ export default function App() {
             <span className="font-bold text-sm tracking-widest text-zinc-100 uppercase">AirVita</span>
           </div>
           
-          <div className="hidden sm:flex items-center gap-4 font-mono text-[10px] text-zinc-500 uppercase tracking-widest">
+          <div className="hidden sm:flex items-center gap-4 font-mono text-xs text-zinc-500 uppercase tracking-widest">
             <span className="flex items-center gap-1.5">
-              <Radio size={10} className={connected ? "text-[#10b981] animate-pulse" : "text-zinc-600"}/> 
+              <Radio size={12} className={connected ? "text-[#10b981] animate-pulse" : "text-zinc-600"}/> 
               SYS: {connected ? 'ONLINE' : 'OFFLINE'}
             </span>
             <span>UPLINK: SECURE</span>
@@ -520,7 +555,7 @@ export default function App() {
               <button
                 key={sys}
                 onClick={() => setUnitSystem(sys)}
-                className={`px-2 py-0.5 text-[9px] font-mono uppercase tracking-wider rounded transition-colors ${
+                className={`px-3 py-1 text-[11px] font-mono uppercase tracking-wider rounded transition-colors ${
                   unitSystem === sys ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-500 hover:text-zinc-400'
                 }`}
               >
@@ -530,21 +565,34 @@ export default function App() {
           </div>
 
           <select
-            value={manualScenarioId || 'live'}
-            onChange={e => selectScenario(e.target.value)}
-            className="hidden md:block bg-zinc-900/50 border border-zinc-800 text-zinc-400 text-[10px] font-mono uppercase tracking-widest rounded px-2 py-1 outline-none cursor-pointer"
+            value={activeMonitorId}
+            onChange={e => setActiveMonitorId(e.target.value)}
+            className="bg-zinc-900 border border-zinc-700 text-zinc-200 text-xs font-mono uppercase tracking-widest rounded px-3 py-1.5 outline-none cursor-pointer focus:border-emerald-500 focus:bg-zinc-800"
           >
-            <option value="live">Live Feed</option>
-            <option value="weather">Local Weather</option>
-            {scenarios.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            {monitorsList.map(m => (
+              <option key={m.id} value={m.id} className="bg-zinc-900 text-zinc-200">
+                {m.connected ? '●' : '○'} {m.name}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={manualScenarioId || (activeMonitorId === 'simulation' ? 'simulation' : 'live')}
+            onChange={e => selectScenario(e.target.value)}
+            className="hidden md:block bg-zinc-900 border border-zinc-700 text-zinc-200 text-xs font-mono uppercase tracking-widest rounded px-3 py-1.5 outline-none cursor-pointer focus:border-zinc-500 focus:bg-zinc-800"
+          >
+            <option value="live" className="bg-zinc-900 text-zinc-200">Mode: Hardware</option>
+            <option value="simulation" className="bg-zinc-900 text-zinc-200">Mode: Simulation</option>
+            <option value="weather" className="bg-zinc-900 text-zinc-200">Mode: Weather</option>
+            {scenarios.map(s => <option key={s.id} value={s.id} className="bg-zinc-900 text-zinc-200">Preset: {s.name}</option>)}
           </select>
 
           <div className="flex items-center border-l border-zinc-800/80 h-full pl-4 gap-4">
             <button
               onClick={() => (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? setIsScannerOpen(true) : setIsPairingOpen(true))}
-              className="text-[10px] font-mono text-zinc-400 hover:text-zinc-100 transition-colors uppercase tracking-widest flex items-center gap-1.5"
+              className="text-xs font-mono text-zinc-400 hover:text-zinc-100 transition-colors uppercase tracking-widest flex items-center gap-1.5"
             >
-              <Crosshair size={12} /> <span className="hidden sm:inline">Init Scan</span>
+              <Crosshair size={14} /> <span className="hidden sm:inline">Init Scan</span>
             </button>
             <button onClick={() => setIsTechOpen(!isTechOpen)} className="text-zinc-500 hover:text-zinc-300">
               <Settings2 size={16} />
@@ -557,13 +605,13 @@ export default function App() {
       <main className="flex-1 min-h-0 flex flex-col">
 
         {/* ═══ TOP BAND: Radar + Focus Details + AI Insights ═══ */}
-        <div className="h-[35%] flex min-h-0 border-b border-zinc-800/80">
+        <div className="h-[50%] flex min-h-0 border-b border-zinc-800/80">
 
           {/* ── Radar Matrix ── */}
           <div className="w-[28%] min-w-[220px] relative flex items-center justify-center border-r border-zinc-800/80 bg-zinc-950/30 p-4">
             <div className="absolute top-3 left-4 flex items-center gap-2">
-              <Cpu size={12} className="text-zinc-500" />
-              <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">Composite Matrix</span>
+              <Cpu size={14} className="text-zinc-500" />
+              <span className="text-xs font-mono text-zinc-500 uppercase tracking-widest">Composite Matrix</span>
             </div>
             <RadarMatrix scores={scoreData} activeAxisId={isActivity ? lookupKey : null} activeColor={activeColor} />
           </div>
@@ -572,11 +620,11 @@ export default function App() {
           <div className="w-[320px] xl:w-[360px] shrink-0 flex flex-col min-w-0 border-r border-zinc-800/80 bg-[#09090b]">
             
             {/* Focus Header */}
-            <div className="px-4 py-2 flex items-center justify-between bg-zinc-900/20 border-b border-zinc-800/50 shrink-0">
-              <span className="text-xs font-mono text-zinc-400 uppercase tracking-widest">
+            <div className="px-5 py-4 flex items-center justify-between bg-zinc-900/20 border-b border-zinc-800/50 shrink-0">
+              <span className="text-base font-mono text-zinc-400 uppercase tracking-widest">
                 Focus: <span className="font-semibold transition-colors duration-500" style={{ color: activeColor }}>{activeMeta?.label || activeMeta?.shortLabel || 'SYSTEM'}</span>
               </span>
-              <span className="text-xs font-mono font-semibold transition-colors duration-500" style={{ color: activeColor }}>
+              <span className="text-base font-mono font-semibold transition-colors duration-500" style={{ color: activeColor }}>
                 [{displayActiveValue} {isActivity ? 'PTS' : (CONVERSIONS[rawKey]?.[unitSystem]?.unit || activeMeta?.unit)}]
               </span>
             </div>
@@ -590,17 +638,17 @@ export default function App() {
                   isActiveRange = currentActiveValue > prevMax && currentActiveValue <= t.max;
                 }
                 return (
-                  <div key={idx} className="group flex flex-col gap-1">
+                  <div key={idx} className="group flex flex-col gap-2 mb-3">
                     <div className="flex items-center justify-between">
                       <span 
-                        className={`text-[13px] font-mono uppercase tracking-widest transition-colors ${isActiveRange ? 'font-semibold' : 'text-zinc-600 group-hover:text-zinc-500'}`}
+                        className={`text-base font-mono uppercase tracking-widest transition-colors ${isActiveRange ? 'font-semibold' : 'text-zinc-600 group-hover:text-zinc-500'}`}
                         style={isActiveRange ? { color: activeColor } : {}}
                       >
                         {t.label}
                       </span>
-                      <span className="text-[11px] font-mono text-zinc-600">≤ {t.max}</span>
+                      <span className="text-sm font-mono text-zinc-600">≤ {t.max}</span>
                     </div>
-                    <p className={`text-[13px] leading-snug transition-colors duration-300 ${isActiveRange ? 'text-zinc-300' : 'text-zinc-600'}`}>
+                    <p className={`text-base leading-snug transition-colors duration-300 ${isActiveRange ? 'text-zinc-300' : 'text-zinc-600'}`}>
                       {t.text}
                     </p>
                   </div>
@@ -613,20 +661,20 @@ export default function App() {
           <div className="flex-1 flex flex-col bg-[#09090b] min-h-0 min-w-[300px]">
 
             {/* Header */}
-            <div className="px-4 py-2 border-b border-zinc-800/80 flex items-center justify-between shrink-0 bg-zinc-900/20">
-              <span className="text-xs font-mono uppercase tracking-widest flex items-center gap-2 transition-colors duration-500" style={{ color: activeColor }}>
-                <BrainCircuit size={14} /> Neural Diagnostics
+            <div className="px-4 py-3 border-b border-zinc-800/80 flex items-center justify-between shrink-0 bg-zinc-900/20">
+              <span className="text-sm font-mono uppercase tracking-widest flex items-center gap-2 transition-colors duration-500" style={{ color: activeColor }}>
+                <BrainCircuit size={16} /> Neural Diagnostics
               </span>
               <div className="flex items-center gap-3">
                 {analysisCooldown > 0 && (
-                  <span className="text-[10px] font-mono text-zinc-600 uppercase">COOLDOWN: {analysisCooldown}S</span>
+                  <span className="text-xs font-mono text-zinc-600 uppercase">COOLDOWN: {analysisCooldown}S</span>
                 )}
                 <button 
                   onClick={fetchAnalysis} 
                   disabled={analysisLoading || analysisCooldown > 0} 
                   className={`transition-colors ${(analysisLoading || analysisCooldown > 0) ? 'text-zinc-800' : 'text-zinc-600 hover:text-zinc-300'}`}
                 >
-                  <RefreshCw size={14} className={analysisLoading ? 'animate-spin' : ''} />
+                  <RefreshCw size={16} className={analysisLoading ? 'animate-spin' : ''} />
                 </button>
               </div>
             </div>
@@ -643,51 +691,51 @@ export default function App() {
                 {analysisError ? (
                   <>
                     <AlertCircle size={20} className="mx-auto text-[#f43f5e] mb-1" />
-                    <span className="text-[10px] font-mono text-[#f43f5e] uppercase tracking-widest block">{analysisError}</span>
+                    <span className="text-xs font-mono text-[#f43f5e] uppercase tracking-widest block">{analysisError}</span>
                   </>
                 ) : status?.pairing_status === 'ready' ? (
                   <>
-                    <Camera size={20} className="mx-auto text-zinc-600 mb-1 transition-colors duration-500 group-hover:text-zinc-400" />
-                    <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest block">Awaiting Mobile Link</span>
-                    <button onClick={() => setIsPairingOpen(true)} className="text-[9px] font-mono text-zinc-400 underline mt-1 hover:text-zinc-200">Initialize Scanner</button>
+                    <Camera size={24} className="mx-auto text-zinc-600 mb-2 transition-colors duration-500 group-hover:text-zinc-400" />
+                    <span className="text-xs font-mono text-zinc-500 uppercase tracking-widest block">Awaiting Mobile Link</span>
+                    <button onClick={() => setIsPairingOpen(true)} className="text-[10px] font-mono text-zinc-400 underline mt-2 hover:text-zinc-200">Initialize Scanner</button>
                   </>
                 ) : status?.pairing_status === 'connected' ? (
                   <>
-                    <Radio size={20} className="mx-auto text-blue-500 mb-1 animate-pulse" />
-                    <span className="text-[10px] font-mono text-blue-400 uppercase tracking-widest block font-bold">Device Link Established</span>
-                    <span className="text-[9px] font-mono text-zinc-500 block mt-1 uppercase">Continue scanning on your phone...</span>
+                    <Radio size={24} className="mx-auto text-blue-500 mb-2 animate-pulse" />
+                    <span className="text-xs font-mono text-blue-400 uppercase tracking-widest block font-bold">Device Link Established</span>
+                    <span className="text-[10px] font-mono text-zinc-500 block mt-1 uppercase">Continue scanning on your phone...</span>
                   </>
                 ) : (
                   <div className="flex flex-col items-center">
-                    <div className="flex items-center gap-3 mb-1">
-                       <CheckCircle2 size={18} className="text-emerald-500" />
-                       <span className="text-xs font-mono uppercase tracking-[0.2em] text-emerald-500 font-bold">{status?.room_context?.room_type || 'ROOM'} SYNC'D</span>
+                    <div className="flex items-center gap-3 mb-2">
+                       <CheckCircle2 size={20} className="text-emerald-500" />
+                       <span className="text-sm font-mono uppercase tracking-[0.2em] text-emerald-500 font-bold">{status?.room_context?.room_type || 'ROOM'} SYNC'D</span>
                     </div>
                     {status?.room_context?.identified_objects?.length > 0 && (
-                      <div className="flex flex-wrap justify-center gap-1 max-w-[280px]">
+                      <div className="flex flex-wrap justify-center gap-1.5 max-w-[280px]">
                         {status.room_context.identified_objects.slice(0, 5).map((obj, i) => (
-                          <span key={i} className="text-[8px] font-mono bg-zinc-800 text-zinc-500 px-1 py-0.5 rounded uppercase">{obj}</span>
+                          <span key={i} className="text-[10px] font-mono bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded uppercase">{obj}</span>
                         ))}
                       </div>
                     )}
-                    <button onClick={resetPairing} className="text-[8px] font-mono text-zinc-600 hover:text-zinc-400 uppercase mt-2 border border-zinc-800 px-2 py-0.5 rounded">New Scan</button>
+                    <button onClick={resetPairing} className="text-[10px] font-mono text-zinc-500 hover:text-zinc-300 uppercase mt-3 border border-zinc-800 px-3 py-1 rounded">New Scan</button>
                   </div>
                 )}
               </div>
             </div>
 
             {/* System Summary */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
-              <span className="text-[11px] font-mono text-zinc-500 uppercase tracking-widest mb-2 block">AI Analysis</span>
-              <p className="text-sm text-zinc-300 leading-relaxed font-sans tracking-tight mb-3">
-                <span className="font-mono mr-1.5 transition-colors duration-500" style={{ color: activeColor }}>{'>'}</span>
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
+              <span className="text-sm font-mono text-zinc-500 uppercase tracking-widest mb-4 block">AI Analysis</span>
+              <p className="text-lg text-zinc-300 leading-relaxed font-sans tracking-tight mb-5">
+                <span className="font-mono mr-2 transition-colors duration-500" style={{ color: activeColor }}>{'>'}</span>
                 {analysis.summary || "Run analysis to process environmental payload against neural matrix."}
               </p>
               {analysis.flags?.length > 0 && (
-                <div className="pt-3 border-t border-zinc-800/50 space-y-1.5">
+                <div className="pt-5 border-t border-zinc-800/50 space-y-3">
                   {analysis.flags.map((flag, i) => (
-                    <div key={i} className="text-[12px] font-mono text-zinc-400">
-                      <span className="text-zinc-600 mr-1">−</span> {typeof flag === 'string' ? flag : flag.message || flag.label || JSON.stringify(flag)}
+                    <div key={i} className="text-base font-mono text-zinc-400">
+                      <span className="text-zinc-600 mr-2">−</span> {typeof flag === 'string' ? flag : flag.message || flag.label || JSON.stringify(flag)}
                     </div>
                   ))}
                 </div>
@@ -698,12 +746,12 @@ export default function App() {
 
         {/* ═══ BOTTOM BAND: Full-Width Telemetry Grid ═══ */}
         <div className="flex-1 flex flex-col min-h-0 bg-zinc-950">
-          <div className="px-4 py-2 border-b border-zinc-800/80 flex justify-between items-center bg-[#09090b] shrink-0">
-            <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest flex items-center gap-2">
-              <Activity size={10} /> Live Telemetry Feed
+          <div className="px-5 py-4 border-b border-zinc-800/80 flex justify-between items-center bg-[#09090b] shrink-0">
+            <span className="text-sm font-mono text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+              <Activity size={16} /> Live Telemetry Feed
             </span>
             {lastFetch && (
-              <span className="text-[9px] font-mono text-zinc-600 uppercase">SYNC: {lastFetch.toLocaleTimeString()}</span>
+              <span className="text-xs font-mono text-zinc-600 uppercase">SYNC: {lastFetch.toLocaleTimeString()}</span>
             )}
           </div>
           
@@ -726,16 +774,16 @@ export default function App() {
                     
                     <div className="flex justify-between items-start z-10 shrink-0">
                       <div className="flex items-center gap-2">
-                        <meta.icon size={12} style={{ color: isActive ? meta.iconColor : '#71717a' }} />
-                        <span className={`text-[9px] xl:text-[10px] font-mono tracking-widest ${isActive ? 'text-zinc-200' : 'text-zinc-400'}`}>{meta.shortLabel}</span>
+                        <meta.icon size={16} style={{ color: isActive ? meta.iconColor : '#71717a' }} />
+                        <span className={`text-xs xl:text-sm font-mono tracking-widest ${isActive ? 'text-zinc-200' : 'text-zinc-400'}`}>{meta.shortLabel}</span>
                       </div>
-                      <span className={`text-[8px] xl:text-[9px] font-mono px-1.5 py-0.5 rounded-sm border ${isActive ? 'border-zinc-600 text-zinc-300' : 'border-zinc-800 text-zinc-600'}`}>{rawVal != null ? meta.getStatus(rawVal) : 'OFF'}</span>
+                      <span className={`text-[11px] xl:text-xs font-mono px-2 py-0.5 rounded-sm border ${isActive ? 'border-zinc-600 text-zinc-300' : 'border-zinc-800 text-zinc-600'}`}>{rawVal != null ? meta.getStatus(rawVal) : 'OFF'}</span>
                     </div>
-                    <div className="flex items-baseline gap-1 mt-1 z-10 shrink-0">
-                      <span className={`text-2xl xl:text-3xl font-light tracking-tighter ${isActive ? 'text-white' : 'text-zinc-300'}`}>
+                    <div className="flex items-baseline gap-1 mt-3 z-10 shrink-0">
+                      <span className={`text-4xl xl:text-5xl font-light tracking-tighter ${isActive ? 'text-white' : 'text-zinc-300'}`}>
                         {numericVal != null ? <AnimatedNumber value={numericVal} decimals={1} /> : '--'}
                       </span>
-                      <span className="text-[10px] xl:text-xs font-mono text-zinc-500">{CONVERSIONS[key]?.[unitSystem]?.unit || meta.unit}</span>
+                      <span className="text-sm xl:text-base font-mono text-zinc-500">{CONVERSIONS[key]?.[unitSystem]?.unit || meta.unit}</span>
                     </div>
                     <div className="flex-1 min-h-0 pt-1 z-10 pr-2">
                       <AreaChart history={history} sensorKey={key} color={meta.iconColor} unitSystem={unitSystem} />
@@ -764,30 +812,30 @@ export default function App() {
             </div>
 
             <div className="mb-8">
-              <h4 className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 mb-4">Neural Override {scenarios.length > 0 ? `(${scenarios.length})` : '(Loading...)'}</h4>
+              <h4 className="text-xs font-mono uppercase tracking-widest text-zinc-500 mb-4">Neural Override {scenarios.length > 0 ? `(${scenarios.length})` : '(Loading...)'}</h4>
               <div className="flex flex-col gap-2">
                 <button
                   onClick={() => selectScenario('live')}
-                  className={`flex items-center justify-between p-3 rounded border font-mono text-[10px] uppercase tracking-widest transition-colors ${!manualScenarioId || manualScenarioId === 'live' ? 'border-[#10b981] bg-[#10b981]/10 text-[#10b981]' : 'border-zinc-800 bg-zinc-900/50 text-zinc-400 hover:bg-zinc-800'}`}
+                  className={`flex items-center justify-between p-3 rounded border font-mono text-xs uppercase tracking-widest transition-colors ${!manualScenarioId || manualScenarioId === 'live' ? 'border-[#10b981] bg-[#10b981]/10 text-[#10b981]' : 'border-zinc-800 bg-zinc-900/50 text-zinc-400 hover:bg-zinc-800'}`}
                 >
-                  <span className="flex items-center gap-2"><Radio size={14} /> Live Hardware Feed</span>
-                  <ChevronRight size={14} />
+                  <span className="flex items-center gap-2"><Radio size={16} /> Live Hardware Feed</span>
+                  <ChevronRight size={16} />
                 </button>
                 {scenarios.map(s => (
                   <button
                     key={s.id} onClick={() => selectScenario(s.id)}
-                    className={`flex items-center justify-between p-3 rounded border font-mono text-[10px] uppercase tracking-widest transition-colors ${manualScenarioId === s.id ? 'border-[#0ea5e9] bg-[#0ea5e9]/10 text-[#0ea5e9]' : 'border-zinc-800 bg-zinc-900/50 text-zinc-400 hover:bg-zinc-800'}`}
+                    className={`flex items-center justify-between p-3 rounded border font-mono text-xs uppercase tracking-widest transition-colors ${manualScenarioId === s.id ? 'border-[#0ea5e9] bg-[#0ea5e9]/10 text-[#0ea5e9]' : 'border-zinc-800 bg-zinc-900/50 text-zinc-400 hover:bg-zinc-800'}`}
                   >
-                    <span className="flex items-center gap-2"><span className="text-sm">{s.icon}</span> {s.name}</span>
-                    <ChevronRight size={14} />
+                    <span className="flex items-center gap-2"><span className="text-base">{s.icon}</span> {s.name}</span>
+                    <ChevronRight size={16} />
                   </button>
                 ))}
               </div>
             </div>
 
             <div className="mb-8 flex-1">
-              <h4 className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 mb-4">Calculation Log</h4>
-              <div className="bg-zinc-950 p-4 rounded border border-zinc-800 font-mono text-[10px] leading-relaxed text-zinc-500 max-h-[240px] overflow-y-auto custom-scrollbar">
+              <h4 className="text-xs font-mono uppercase tracking-widest text-zinc-500 mb-4">Calculation Log</h4>
+              <div className="bg-zinc-950 p-4 rounded border border-zinc-800 font-mono text-xs leading-relaxed text-zinc-500 max-h-[240px] overflow-y-auto custom-scrollbar">
                 {status?.breakdown ? (
                   <div>
                     <div className="text-[#0ea5e9] mb-2">// Health Algorithm (MLP)</div>
@@ -795,7 +843,7 @@ export default function App() {
                     <div>VOC Penalty: <span className="text-[#f43f5e]">{status.breakdown.voc_penalty?.toFixed(1) || '0.0'}</span></div>
                     <div>PM2.5 Penalty: <span className="text-[#f43f5e]">{status.breakdown.pm25_penalty?.toFixed(1) || '0.0'}</span></div>
                     <div className="border-t border-zinc-800 mt-2 pt-2">
-                      Final IAQ: <span className="text-zinc-100 text-xs">{status.breakdown.final_score || '0'}</span>
+                      Final IAQ: <span className="text-zinc-100 text-sm">{status.breakdown.final_score || '0'}</span>
                     </div>
                   </div>
                 ) : (
@@ -804,7 +852,7 @@ export default function App() {
               </div>
             </div>
             
-            <div className="mt-auto pt-4 border-t border-zinc-800 flex justify-between text-[9px] font-mono uppercase tracking-widest text-zinc-600">
+            <div className="mt-auto pt-4 border-t border-zinc-800 flex justify-between text-[10px] font-mono uppercase tracking-widest text-zinc-600">
               <span>Core v2.0.0</span>
               <span>AirVita OS</span>
             </div>
@@ -817,13 +865,13 @@ export default function App() {
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-4">
           <div className="bg-[#e11d48] text-white p-3 rounded flex items-center gap-3 shadow-[0_0_20px_rgba(225,29,72,0.4)] border border-[#f43f5e]">
             <AlertCircle size={16} />
-            <p className="text-[11px] font-mono uppercase tracking-wider m-0">{error}</p>
+            <p className="text-xs font-mono uppercase tracking-wider m-0">{error}</p>
           </div>
         </div>
       )}
 
-      {isScannerOpen && <RoomScanner onClose={() => setIsScannerOpen(false)} />}
-      {isPairingOpen && <MobilePairing onClose={() => setIsPairingOpen(false)} />}
+      {isScannerOpen && <RoomScanner deviceId={activeMonitorId} onClose={() => setIsScannerOpen(false)} />}
+      {isPairingOpen && <MobilePairing deviceId={activeMonitorId} onClose={() => setIsPairingOpen(false)} />}
     </div>
   )
 }
