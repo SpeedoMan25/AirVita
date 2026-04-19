@@ -7,7 +7,7 @@ class DHT11Handler:
     Handler for DHT11 Temperature and Humidity sensor on Raspberry Pi 4B.
     Uses adafruit_dht library and handles common read errors.
     """
-    def __init__(self, pin=board.D5):
+    def __init__(self, pin=board.D17):
         self.dht = adafruit_dht.DHT11(pin)
         self.last_temp = None
         self.last_hum = None

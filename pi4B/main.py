@@ -50,7 +50,7 @@ def main():
     if DHT11Handler:
         try:
             dht = DHT11Handler()
-            print("✅ DHT11 Initialized (Grove D5)")
+            print("✅ DHT11 Initialized (Pin 11 / D17)")
         except Exception as e:
             print(f"⚠️ DHT11 not found or failed to init: {e}")
     else:
