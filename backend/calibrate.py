@@ -13,7 +13,7 @@ SCALER_PATH = ROOT_DIR / "model" / "scaler.pkl"
 
 def run_calibration():
     print("\n" + "="*80)
-    print(" ROOMPULSE SCORE CALIBRATION SYSTEM")
+    print(" AIRVITA SCORE CALIBRATION SYSTEM")
     print("="*80)
 
     # 1. Load Scenarios

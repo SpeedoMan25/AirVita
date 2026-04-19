@@ -9,7 +9,7 @@ if [ -z "$IP" ]; then
     IP="127.0.0.1"
 fi
 
-echo "🚀 Starting RoomPulse and opening browser to: https://$IP:5173"
+echo "🚀 Starting AirVita and opening browser to: https://$IP:5173"
 
 # Open browser in the background after a 6-second delay to let Vite + Backend start
 (sleep 6 && open "https://$IP:5173") &
