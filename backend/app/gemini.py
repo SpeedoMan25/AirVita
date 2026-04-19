@@ -8,6 +8,7 @@ research-backed health summary and list of flagged concerns.
 import json
 import logging
 import os
+import time
 from typing import Optional
 
 logger = logging.getLogger("airvita.gemini")
@@ -41,13 +42,64 @@ Keep flags concise (under 12 words each).
 """.strip()
 
 
+# ──────────────────────────────────────────────
+# Analysis Cache Store
+# ──────────────────────────────────────────────
+_ANALYSIS_CACHE = {
+    "data": None,
+    "timestamp": None,
+    "last_sensors": None, # dict of scores + key readings
+    "last_room": None     # str room_type
+}
+
+from datetime import datetime, timedelta
+
+def is_cache_valid(current_reading: dict, current_scores: dict, current_room_ctx: dict) -> bool:
+    """
+    Checks if we can reuse the cached analysis based on delta thresholds.
+    Returns True if environment is stable enough to skip raw AI call.
+    """
+    if not _ANALYSIS_CACHE["data"] or not _ANALYSIS_CACHE["timestamp"]:
+        return False
+        
+    # Max age of 4 minutes for cache hits during stability
+    age = datetime.now() - _ANALYSIS_CACHE["timestamp"]
+    if age > timedelta(minutes=4):
+        return False
+
+    # Check context identity
+    current_room = current_room_ctx.get("room_type", "Unknown")
+    if current_room != _ANALYSIS_CACHE["last_room"]:
+        return False
+        
+    # Check sensor deltas
+    last = _ANALYSIS_CACHE["last_sensors"]
+    if not last: return False
+    
+    try:
+        # Check health score shift (threshold: 3 points)
+        score_shift = abs(current_scores.get("health", 0) - last.get("health", 0))
+        if score_shift > 3: return False
+        
+        # Check specific sensor drifts (threshold: 2 units)
+        for key, val in [("temperature_c", 2.0), ("humidity_pct", 5.0)]:
+            delta = abs(current_reading.get(key, 0) - last.get(key, 0))
+            if delta > val: return False
+            
+        return True
+    except Exception:
+        return False
+
 def generate_analysis(reading: dict, scores: dict, room_ctx: dict) -> dict:
     """
-    Call Gemini 2.0 Flash with current sensor readings and return
-    a dict with keys: summary (str), flags (list[str]).
-
-    Falls back to a safe default on any error.
+    Call Gemini 2.0 Flash with current sensor readings.
+    Includes Smart Caching to resolve 429 rate limits.
     """
+    # ── Check Cache First ──
+    if is_cache_valid(reading, scores, room_ctx):
+        logger.info("Serving analysis from Smart Cache (Stable Environment)")
+        return _ANALYSIS_CACHE["data"]
+
     api_key = os.getenv("GEMINI_API_KEY", "")
 
     if not api_key:
@@ -55,14 +107,14 @@ def generate_analysis(reading: dict, scores: dict, room_ctx: dict) -> dict:
         return _fallback("Gemini API key is not configured.")
 
     try:
-        from google import genai  # lazily imported so missing dep doesn't crash app startup
-
+        from google import genai
         client = genai.Client(api_key=api_key)
         
         objects_str = ", ".join(room_ctx.get('identified_objects', [])) if room_ctx.get('identified_objects') else "None detected"
+        room_type = room_ctx.get('room_type', 'Unknown')
         
         sensor_lines = "\n".join([
-            f"- AI Visual Room Classification: {room_ctx.get('room_type', 'Unknown')}",
+            f"- AI Visual Room Classification: {room_type}",
             f"- AI Detected Objects: {objects_str}",
             f"- Temperature:  {reading.get('temperature_c', 'N/A')} °C",
             f"- Humidity:     {reading.get('humidity_pct', 'N/A')} %RH",
@@ -73,33 +125,73 @@ def generate_analysis(reading: dict, scores: dict, room_ctx: dict) -> dict:
             f"- VOCs:         {reading.get('voc_ppb', 'N/A')} ppb",
             f"- Room Health Score: {scores.get('health', 'N/A')}/99",
             f"- Sleep Conditions Score: {scores.get('sleep', 'N/A')}/99",
-            f"- Study Conditions Score: {scores.get('study', 'N/A')}/99",
             f"- Work Conditions Score: {scores.get('work', 'N/A')}/99",
             f"- Fun/Social Conditions Score: {scores.get('fun', 'N/A')}/99",
         ])
 
         prompt = f"{_RESEARCH_CONTEXT}\n\nCurrent Context & Readings:\n{sensor_lines}"
 
-        response = client.models.generate_content(
-            model="gemini-flash-latest",
-            contents=prompt,
-        )
+        # ── Retry with Exponential Backoff ──
+        max_retries = 3
+        last_exception = None
+        
+        for attempt in range(max_retries):
+            try:
+                response = client.models.generate_content(
+                    model="gemini-2.5-flash-lite",
+                    contents=prompt,
+                )
+                raw = response.text.strip()
 
-        raw = response.text.strip()
+                # Strip markdown code fences
+                if raw.startswith("```"):
+                    raw = raw.split("```")[1]
+                    if raw.startswith("json"):
+                        raw = raw[4:]
+                    raw = raw.strip()
 
-        # Strip markdown code fences if the model adds them
-        if raw.startswith("```"):
-            raw = raw.split("```")[1]
-            if raw.startswith("json"):
-                raw = raw[4:]
-            raw = raw.strip()
+                result = json.loads(raw)
+                analysis_data = {
+                    "summary": str(result.get("summary", "")),
+                    "flags": [str(f) for f in result.get("flags", [])],
+                }
 
-        result = json.loads(raw)
+                # ── Update Cache ──
+                _ANALYSIS_CACHE["data"] = analysis_data
+                _ANALYSIS_CACHE["timestamp"] = datetime.now()
+                _ANALYSIS_CACHE["last_sensors"] = {**scores, **reading}
+                _ANALYSIS_CACHE["last_room"] = room_type
 
-        return {
-            "summary": str(result.get("summary", "")),
-            "flags": [str(f) for f in result.get("flags", [])],
-        }
+                return analysis_data
+            except Exception as e:
+                last_exception = e
+                err_str = str(e).upper()
+                logger.error(f"Gemini attempt failing: {e}")
+                
+                if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "503" in err_str or "OVERLOADED" in err_str:
+                    wait_time = (2 ** attempt) + 1
+                    logger.warning(f"Gemini capacity hit (attempt {attempt+1}/{max_retries}). Retrying in {wait_time}s...")
+                    time.sleep(wait_time)
+                    continue
+                
+                if "404" in err_str or "NOT_FOUND" in err_str:
+                    break
+                break
+
+        # Emergency Fallback: If quota reached but we have ANY old cache, show the old one 
+        # instead of a "Quota reached" message to the user.
+        err_str = str(last_exception)
+        if ("429" in err_str or "RESOURCE_EXHAUSTED" in err_str) and _ANALYSIS_CACHE["data"]:
+            logger.warning("Quota reached, serving stale cache as emergency fallback.")
+            return _ANALYSIS_CACHE["data"]
+
+        if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+            return _fallback("API quota reached. Please check your billing/usage tier or try again in a minute.")
+        if "404" in err_str or "NOT_FOUND" in err_str:
+            return _fallback(f"AI model not found ({last_exception}). Please verify your API key access.")
+        
+        logger.error(f"Final Gemini error: {last_exception}")
+        return _fallback("AI analysis is temporarily unavailable (capacity exceeded).")
 
     except ImportError:
         logger.error("google-genai not installed. Run: pip install google-genai")
@@ -110,11 +202,7 @@ def generate_analysis(reading: dict, scores: dict, room_ctx: dict) -> dict:
         return _fallback("AI returned an unexpected response format.")
 
     except Exception as e:
-        err_str = str(e)
-        if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
-            logger.warning("Gemini quota exceeded")
-            return _fallback("API quota reached — please try again shortly.")
-        logger.error(f"Gemini error: {e}")
+        logger.error(f"Gemini initialization error: {e}")
         return _fallback("AI analysis is temporarily unavailable.")
 
 

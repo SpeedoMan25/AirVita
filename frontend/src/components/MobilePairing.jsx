@@ -9,17 +9,30 @@ export default function MobilePairing({ onClose }) {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const host = window.location.hostname;
     const port = window.location.port ? `:${window.location.port}` : '';
+    const host = window.location.hostname;
 
-    if (host === 'localhost' || host === '127.0.0.1') {
-      setError("Please access this dashboard using your Mac's Network IP (e.g. https://10.105.x.x:5173) instead of localhost to pair your phone.");
-    } else {
-      setInfo({
-        ip: host,
-        url: `https://${host}${port}`
-      });
+    // If already on a network IP, use it directly
+    if (host !== 'localhost' && host !== '127.0.0.1' && !host.includes('lvh.me') && host !== 'localhost.localdomain') {
+      setInfo({ ip: host, url: `https://${host}${port}#scan` });
+      return;
     }
+
+    // Try to auto-detect network IP from backend
+    fetch(`${API_BASE}/api/connection-info`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.ip && data.ip !== '127.0.0.1') {
+          setInfo({ ip: data.ip, url: `https://${data.ip}${port}#scan` });
+        } else {
+          setInfo({ ip: host, url: `https://${host}${port}#scan` });
+          setError("Could not detect network IP. Make sure your PC and phone are on the same Wi-Fi. Try accessing the dashboard using your PC's IP address instead of localhost.");
+        }
+      })
+      .catch(() => {
+        setInfo({ ip: host, url: `https://${host}${port}#scan` });
+        setError("Could not detect network IP. Make sure your PC and phone are on the same Wi-Fi. Try accessing the dashboard using your PC's IP address instead of localhost.");
+      });
   }, []);
 
   return (

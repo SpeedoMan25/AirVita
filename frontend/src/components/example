@@ -2,14 +2,31 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import {
   Activity, Thermometer, Droplets, Sun, Volume2, Gauge, Wind,
   Settings2, X, RefreshCw, AlertCircle, BrainCircuit,
-  CheckCircle2, ChevronRight, Camera, Radio, Crosshair, Cpu
+  CheckCircle2, ChevronRight, Camera, Radio, Maximize2, Crosshair, Cpu
 } from 'lucide-react'
 
-import RoomScanner from './components/RoomScanner'
-import MobilePairing from './components/MobilePairing'
-
-const API_BASE = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || '')
+const API_BASE = '';
 const POLL_INTERVAL_MS = 2000
+
+const RoomScanner = ({ onClose }) => (
+  <div className="fixed inset-0 z-50 bg-[#09090b]/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div className="bg-zinc-950 border border-zinc-800 p-6 flex flex-col items-center">
+      <Camera size={32} className="text-zinc-600 mb-4" />
+      <p className="text-zinc-400 font-mono text-[10px] uppercase tracking-widest mb-6">Scanner Module Offline</p>
+      <button onClick={onClose} className="px-4 py-2 border border-zinc-800 text-zinc-300 hover:bg-zinc-900 transition-colors font-mono text-[10px] uppercase tracking-widest">Close</button>
+    </div>
+  </div>
+);
+
+const MobilePairing = ({ onClose }) => (
+  <div className="fixed inset-0 z-50 bg-[#09090b]/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div className="bg-zinc-950 border border-zinc-800 p-6 flex flex-col items-center">
+      <Radio size={32} className="text-zinc-600 mb-4" />
+      <p className="text-zinc-400 font-mono text-[10px] uppercase tracking-widest mb-6">Pairing Module Offline</p>
+      <button onClick={onClose} className="px-4 py-2 border border-zinc-800 text-zinc-300 hover:bg-zinc-900 transition-colors font-mono text-[10px] uppercase tracking-widest">Close</button>
+    </div>
+  </div>
+);
 
 /* ═══════════════════════════════════════════════════
    HUD SENSOR & ACTIVITY METADATA
@@ -189,8 +206,8 @@ const RadarMatrix = ({ scores, activeAxisId, activeColor }) => {
   return (
     <div className="relative w-full aspect-square max-w-[280px] mx-auto flex items-center justify-center">
       <div 
-        className="absolute inset-0 blur-[60px] rounded-full opacity-15" 
-        style={{ backgroundColor: '#10b981' }}
+        className="absolute inset-0 blur-[60px] rounded-full transition-colors duration-700 opacity-20" 
+        style={{ backgroundColor: activeColor }}
       ></div>
       
       <svg viewBox="0 0 200 200" className="w-full h-full overflow-visible relative z-10">
@@ -201,52 +218,40 @@ const RadarMatrix = ({ scores, activeAxisId, activeColor }) => {
         
         {axes.map((a, i) => {
           const pt = getCoord(100, a.angle);
+          const isActive = a.id === activeAxisId;
           return (
             <g key={i}>
-              <line x1={center} y1={center} x2={pt.x} y2={pt.y} stroke={a.color} strokeWidth="1" strokeOpacity="0.5" />
+              <line x1={center} y1={center} x2={pt.x} y2={pt.y} stroke={isActive ? a.color : "#3f3f46"} strokeWidth="1" className="transition-colors duration-500" />
               <text 
-                x={center + (radius + 24) * Math.cos(a.angle * Math.PI / 180)} 
-                y={center + (radius + 24) * Math.sin(a.angle * Math.PI / 180)} 
-                fill={a.color} 
-                fontSize="11" fontFamily="monospace"
+                x={center + (radius + 20) * Math.cos(a.angle * Math.PI / 180)} 
+                y={center + (radius + 20) * Math.sin(a.angle * Math.PI / 180)} 
+                fill={isActive ? a.color : "#71717a"} 
+                fontSize="10" fontFamily="monospace"
                 textAnchor="middle" dominantBaseline="middle"
-                className="font-bold"
-                letterSpacing="0.1em"
+                className="transition-colors duration-500 font-bold"
               >
-                {a.id.toUpperCase()}
+                {a.id.toUpperCase().substring(0,4)}
               </text>
             </g>
           );
         })}
 
-        {/* Per-axis colored triangle segments */}
-        {axes.map((a, i) => {
-          const nextAxis = axes[(i + 1) % axes.length];
-          const pt1 = getCoord(a.val, a.angle);
-          const pt2 = getCoord(nextAxis.val, nextAxis.angle);
-          return (
-            <g key={`seg-${i}`}>
-              <polygon
-                points={`${center},${center} ${pt1.x},${pt1.y} ${pt2.x},${pt2.y}`}
-                fill={`${a.color}20`}
-                className="transition-all duration-700 ease-out"
-              />
-              <line
-                x1={pt1.x} y1={pt1.y} x2={pt2.x} y2={pt2.y}
-                stroke={a.color} strokeWidth="1.5" strokeOpacity="0.7"
-                className="transition-all duration-700 ease-out"
-              />
-            </g>
-          );
-        })}
+        <polygon 
+          points={points} 
+          fill={`${activeColor}33`} stroke={activeColor} strokeWidth="1.5" 
+          className="transition-all duration-700 ease-out"
+        />
 
         {axes.map((a, i) => {
           const pt = getCoord(a.val, a.angle);
+          const isActive = a.id === activeAxisId;
           return (
             <circle 
-              key={i} cx={pt.x} cy={pt.y} r={3} fill={a.color}
+              key={i} cx={pt.x} cy={pt.y} r={isActive ? 4 : 2} fill={a.color}
               className="transition-all duration-700 ease-out"
-            />
+            >
+               {isActive && <animate attributeName="r" values="3;5;3" dur="2s" repeatCount="indefinite" />}
+            </circle>
           );
         })}
       </svg>
@@ -276,7 +281,7 @@ const AreaChart = ({ history, sensorKey, color, unitSystem }) => {
   const areaPoints = `0,100 ${points} 100,100`;
 
   return (
-    <div className="w-full h-full relative">
+    <div className="w-full h-16 relative">
       <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full overflow-visible">
         <defs>
           <linearGradient id={`grad-${sensorKey}`} x1="0" x2="0" y1="0" y2="1">
@@ -333,7 +338,6 @@ export default function App() {
   const [analysis, setAnalysis] = useState({ summary: '', flags: [] })
   const [analysisLoading, setAnalysisLoading] = useState(false)
   const [analysisError, setAnalysisError] = useState(null)
-  const [analysisCooldown, setAnalysisCooldown] = useState(0)
 
   const [activeSensorKey, setActiveSensorKey] = useState('activity_fun')
   const [isTechOpen, setIsTechOpen] = useState(false)
@@ -389,29 +393,18 @@ export default function App() {
   }
 
   const fetchAnalysis = useCallback(async () => {
-    if (analysisCooldown > 0) return
     setAnalysisLoading(true)
     setAnalysisError(null)
     try {
       const res = await fetch(`${API_BASE}/api/analyze`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       setAnalysis(await res.json())
-      
-      // Start 15s cooldown
-      setAnalysisCooldown(15)
     } catch (err) {
       setAnalysisError(err.message)
     } finally {
       setAnalysisLoading(false)
     }
-  }, [analysisCooldown])
-
-  useEffect(() => {
-    if (analysisCooldown > 0) {
-      const timer = setInterval(() => setAnalysisCooldown(c => c - 1), 1000)
-      return () => clearInterval(timer)
-    }
-  }, [analysisCooldown])
+  }, [])
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -441,24 +434,6 @@ export default function App() {
   const activeMeta = isActivity ? ACTIVITY_META[lookupKey] : SENSOR_META[rawKey]
   const activeColor = activeMeta?.color || activeMeta?.iconColor || '#3f3f46'
 
-  // ── Auto-trigger Analysis on Context Sync ──
-  const prevPairingStatus = useRef('ready')
-  useEffect(() => {
-    if (status?.pairing_status === 'completed' && prevPairingStatus.current !== 'completed') {
-      // Transition: Just finished on phone!
-      fetchAnalysis()
-    }
-    prevPairingStatus.current = status?.pairing_status
-  }, [status?.pairing_status, fetchAnalysis])
-
-  const resetPairing = async () => {
-    try {
-      await fetch(`${API_BASE}/api/pairing/reset`, { method: 'POST' })
-      setAnalysis({ summary: '', flags: [] })
-      fetchStatus()
-    } catch(err) {}
-  }
-
   // Values for the right panel
   const currentActiveValue = isActivity
     ? (status?.[lookupKey === 'health' ? 'score' : `${lookupKey}_score`] ?? null)
@@ -483,15 +458,6 @@ export default function App() {
      RENDER
      ═══════════════════════════════════════════════════ */
 
-  // If accessed via #scan hash (mobile phone from QR code), show only the scanner
-  if (window.location.hash === '#scan') {
-    return (
-      <div className="h-screen w-full bg-[#09090b]">
-        <RoomScanner onClose={() => { window.location.hash = ''; window.location.reload(); }} />
-      </div>
-    )
-  }
-
   return (
     <div className="h-screen w-full bg-[#09090b] text-zinc-300 font-sans flex flex-col overflow-hidden selection:bg-zinc-800">
       
@@ -515,6 +481,7 @@ export default function App() {
         </div>
 
         <div className="flex items-center h-full gap-4">
+          {/* Unit Toggle */}
           <div className="flex items-center bg-zinc-900/50 border border-zinc-800 rounded px-1 py-0.5">
             {['metric', 'imperial'].map(sys => (
               <button
@@ -553,199 +520,259 @@ export default function App() {
         </div>
       </header>
 
-      {/* ──────────── MAIN: Two Horizontal Bands ──────────── */}
-      <main className="flex-1 min-h-0 flex flex-col">
-
-        {/* ═══ TOP BAND: Radar + Focus Details + AI Insights ═══ */}
-        <div className="h-[35%] flex min-h-0 border-b border-zinc-800/80">
-
-          {/* ── Radar Matrix ── */}
-          <div className="w-[28%] min-w-[220px] relative flex items-center justify-center border-r border-zinc-800/80 bg-zinc-950/30 p-4">
-            <div className="absolute top-3 left-4 flex items-center gap-2">
-              <Cpu size={12} className="text-zinc-500" />
-              <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">Composite Matrix</span>
-            </div>
-            <RadarMatrix scores={scoreData} activeAxisId={isActivity ? lookupKey : null} activeColor={activeColor} />
-          </div>
-
-          {/* ── Current Focus — Threshold Details ── */}
-          <div className="w-[320px] xl:w-[360px] shrink-0 flex flex-col min-w-0 border-r border-zinc-800/80 bg-[#09090b]">
-            
-            {/* Focus Header */}
-            <div className="px-4 py-2 flex items-center justify-between bg-zinc-900/20 border-b border-zinc-800/50 shrink-0">
-              <span className="text-xs font-mono text-zinc-400 uppercase tracking-widest">
-                Focus: <span className="font-semibold transition-colors duration-500" style={{ color: activeColor }}>{activeMeta?.label || activeMeta?.shortLabel || 'SYSTEM'}</span>
-              </span>
-              <span className="text-xs font-mono font-semibold transition-colors duration-500" style={{ color: activeColor }}>
-                [{displayActiveValue} {isActivity ? 'PTS' : (CONVERSIONS[rawKey]?.[unitSystem]?.unit || activeMeta?.unit)}]
-              </span>
-            </div>
-
-            {/* Threshold Tiers — vertical list with more room */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-3">
-              {activeMeta?.ranges.map((t, idx) => {
-                let isActiveRange = false;
-                if (currentActiveValue != null) {
-                  const prevMax = idx > 0 ? activeMeta.ranges[idx - 1].max : -Infinity;
-                  isActiveRange = currentActiveValue > prevMax && currentActiveValue <= t.max;
-                }
-                return (
-                  <div key={idx} className="group flex flex-col gap-1">
-                    <div className="flex items-center justify-between">
-                      <span 
-                        className={`text-[13px] font-mono uppercase tracking-widest transition-colors ${isActiveRange ? 'font-semibold' : 'text-zinc-600 group-hover:text-zinc-500'}`}
-                        style={isActiveRange ? { color: activeColor } : {}}
-                      >
-                        {t.label}
-                      </span>
-                      <span className="text-[11px] font-mono text-zinc-600">≤ {t.max}</span>
-                    </div>
-                    <p className={`text-[13px] leading-snug transition-colors duration-300 ${isActiveRange ? 'text-zinc-300' : 'text-zinc-600'}`}>
-                      {t.text}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* ── AI Insights / Scanner ── */}
-          <div className="flex-1 flex flex-col bg-[#09090b] min-h-0 min-w-[300px]">
-
-            {/* Header */}
-            <div className="px-4 py-2 border-b border-zinc-800/80 flex items-center justify-between shrink-0 bg-zinc-900/20">
-              <span className="text-xs font-mono uppercase tracking-widest flex items-center gap-2 transition-colors duration-500" style={{ color: activeColor }}>
-                <BrainCircuit size={14} /> Neural Diagnostics
-              </span>
-              <div className="flex items-center gap-3">
-                {analysisCooldown > 0 && (
-                  <span className="text-[10px] font-mono text-zinc-600 uppercase">COOLDOWN: {analysisCooldown}S</span>
-                )}
-                <button 
-                  onClick={fetchAnalysis} 
-                  disabled={analysisLoading || analysisCooldown > 0} 
-                  className={`transition-colors ${(analysisLoading || analysisCooldown > 0) ? 'text-zinc-800' : 'text-zinc-600 hover:text-zinc-300'}`}
-                >
-                  <RefreshCw size={14} className={analysisLoading ? 'animate-spin' : ''} />
-                </button>
-              </div>
-            </div>
-
-             {/* Scanning Visualizer */}
-            <div className="h-28 shrink-0 border-b border-zinc-800/80 bg-zinc-950 relative overflow-hidden flex items-center justify-center group">
-              <div className="absolute inset-0" style={{ backgroundImage: 'linear-gradient(#18181b 1px, transparent 1px), linear-gradient(90deg, #18181b 1px, transparent 1px)', backgroundSize: '12px 12px' }}></div>
-              
-              {(analysisLoading || (status?.pairing_status === 'connected')) && (
-                <div className="absolute top-0 left-0 right-0 h-0.5 opacity-50 animate-[scan_3s_ease-in-out_infinite] transition-colors duration-500" style={{ backgroundColor: activeColor, boxShadow: `0 0 8px ${activeColor}` }}></div>
-              )}
-              
-              <div className="relative z-10 text-center px-4 w-full">
-                {analysisError ? (
-                  <>
-                    <AlertCircle size={20} className="mx-auto text-[#f43f5e] mb-1" />
-                    <span className="text-[10px] font-mono text-[#f43f5e] uppercase tracking-widest block">{analysisError}</span>
-                  </>
-                ) : status?.pairing_status === 'ready' ? (
-                  <>
-                    <Camera size={20} className="mx-auto text-zinc-600 mb-1 transition-colors duration-500 group-hover:text-zinc-400" />
-                    <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest block">Awaiting Mobile Link</span>
-                    <button onClick={() => setIsPairingOpen(true)} className="text-[9px] font-mono text-zinc-400 underline mt-1 hover:text-zinc-200">Initialize Scanner</button>
-                  </>
-                ) : status?.pairing_status === 'connected' ? (
-                  <>
-                    <Radio size={20} className="mx-auto text-blue-500 mb-1 animate-pulse" />
-                    <span className="text-[10px] font-mono text-blue-400 uppercase tracking-widest block font-bold">Device Link Established</span>
-                    <span className="text-[9px] font-mono text-zinc-500 block mt-1 uppercase">Continue scanning on your phone...</span>
-                  </>
-                ) : (
-                  <div className="flex flex-col items-center">
-                    <div className="flex items-center gap-3 mb-1">
-                       <CheckCircle2 size={18} className="text-emerald-500" />
-                       <span className="text-xs font-mono uppercase tracking-[0.2em] text-emerald-500 font-bold">{status?.room_context?.room_type || 'ROOM'} SYNC'D</span>
-                    </div>
-                    {status?.room_context?.identified_objects?.length > 0 && (
-                      <div className="flex flex-wrap justify-center gap-1 max-w-[280px]">
-                        {status.room_context.identified_objects.slice(0, 5).map((obj, i) => (
-                          <span key={i} className="text-[8px] font-mono bg-zinc-800 text-zinc-500 px-1 py-0.5 rounded uppercase">{obj}</span>
-                        ))}
-                      </div>
-                    )}
-                    <button onClick={resetPairing} className="text-[8px] font-mono text-zinc-600 hover:text-zinc-400 uppercase mt-2 border border-zinc-800 px-2 py-0.5 rounded">New Scan</button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* System Summary */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
-              <span className="text-[11px] font-mono text-zinc-500 uppercase tracking-widest mb-2 block">AI Analysis</span>
-              <p className="text-sm text-zinc-300 leading-relaxed font-sans tracking-tight mb-3">
-                <span className="font-mono mr-1.5 transition-colors duration-500" style={{ color: activeColor }}>{'>'}</span>
-                {analysis.summary || "Run analysis to process environmental payload against neural matrix."}
-              </p>
-              {analysis.flags?.length > 0 && (
-                <div className="pt-3 border-t border-zinc-800/50 space-y-1.5">
-                  {analysis.flags.map((flag, i) => (
-                    <div key={i} className="text-[12px] font-mono text-zinc-400">
-                      <span className="text-zinc-600 mr-1">−</span> {typeof flag === 'string' ? flag : flag.message || flag.label || JSON.stringify(flag)}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* ═══ BOTTOM BAND: Full-Width Telemetry Grid ═══ */}
-        <div className="flex-1 flex flex-col min-h-0 bg-zinc-950">
-          <div className="px-4 py-2 border-b border-zinc-800/80 flex justify-between items-center bg-[#09090b] shrink-0">
-            <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest flex items-center gap-2">
-              <Activity size={10} /> Live Telemetry Feed
-            </span>
-            {lastFetch && (
-              <span className="text-[9px] font-mono text-zinc-600 uppercase">SYNC: {lastFetch.toLocaleTimeString()}</span>
-            )}
-          </div>
+      {/* ──────────── MAIN LAYOUT ──────────── */}
+      <main className="flex-1 min-h-0 flex flex-col lg:flex-row">
+        
+        {/* ═══ LEFT COLUMN: HUD & Telemetry ═══ */}
+        <div className="flex-1 flex flex-col min-w-0 border-r border-zinc-800/80">
           
-          <div className="flex-1 grid grid-cols-12 gap-x-[3px] gap-y-[6px] p-[3px] bg-zinc-800/40 overflow-hidden">
-              {Object.keys(SENSOR_META).map((key, idx) => {
-                const meta = SENSOR_META[key];
-                const isActive = activeSensorKey === key;
-                const rawVal = reading?.[key];
-                const numericVal = rawVal != null ? (CONVERSIONS[key]?.[unitSystem]?.convert(rawVal) ?? rawVal) : null;
-                const isTopRow = idx < 4;
-                
-                return (
-                  <div 
-                    key={key} 
-                    onClick={() => setActiveSensorKey(key)}
-                    className={`${isTopRow ? 'col-span-3' : 'col-span-4'} bg-[#09090b] relative p-4 flex flex-col group overflow-hidden cursor-pointer transition-colors ${isActive ? 'bg-zinc-900/40' : ''}`}
-                  >
-                    <div className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-500 pointer-events-none" style={{ background: `radial-gradient(circle at top right, ${meta.iconColor}, transparent 70%)` }}></div>
-                    {isActive && <div className="absolute top-0 left-0 right-0 h-[1px]" style={{ backgroundColor: meta.iconColor, boxShadow: `0 0 8px ${meta.iconColor}`}}></div>}
-                    
-                    <div className="flex justify-between items-start z-10 shrink-0">
-                      <div className="flex items-center gap-2">
-                        <meta.icon size={12} style={{ color: isActive ? meta.iconColor : '#71717a' }} />
-                        <span className={`text-[9px] xl:text-[10px] font-mono tracking-widest ${isActive ? 'text-zinc-200' : 'text-zinc-400'}`}>{meta.shortLabel}</span>
+          {/* TOP HALF: RadarMatrix & Focus Menu */}
+          <div className="h-[40%] lg:h-[45%] flex min-h-0 border-b border-zinc-800/80 bg-zinc-950/30">
+            {/* The Core Visualization */}
+            <div className="flex-1 relative flex items-center justify-center border-r border-zinc-800/80 p-4">
+              <div className="absolute top-4 left-4 flex items-center gap-2">
+                <Cpu size={12} className="text-zinc-500" />
+                <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">Composite Matrix</span>
+              </div>
+              <div className="absolute top-4 right-4 text-[10px] font-mono text-zinc-600">
+                [RADAR_01]
+              </div>
+              <RadarMatrix scores={scoreData} activeAxisId={isActivity ? lookupKey : null} activeColor={activeColor} />
+            </div>
+
+            {/* Matrix Data Menu */}
+            <div className="w-1/3 min-w-[200px] lg:min-w-[250px] flex flex-col bg-[#09090b]">
+              <div className="p-3 border-b border-zinc-800/80 bg-zinc-900/20 shrink-0">
+                 <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">Current Focus</span>
+                 <div className="text-lg lg:text-2xl font-bold tracking-tight mt-1 uppercase transition-colors duration-500 truncate" style={{ color: activeColor }}>
+                   {activeMeta?.label || 'SYSTEM'}
+                 </div>
+              </div>
+              
+              <div className="flex-1 flex flex-col justify-center px-4 gap-2 lg:gap-4 overflow-y-auto custom-scrollbar">
+                {Object.entries(ACTIVITY_META).map(([key, s]) => {
+                  const actKey = `activity_${key}`;
+                  const isActive = activeSensorKey === actKey;
+                  const val = status?.[key === 'health' ? 'score' : `${key}_score`] ?? 0;
+                  
+                  return (
+                    <div 
+                      key={key} 
+                      onClick={() => setActiveSensorKey(actKey)}
+                      className={`flex justify-between items-end group cursor-pointer p-2 -mx-2 rounded transition-colors ${isActive ? 'bg-zinc-900/50' : 'hover:bg-zinc-900/30'}`}
+                    >
+                      <div className="min-w-0 pr-2">
+                        <div className="flex items-center gap-2 mb-0.5 lg:mb-1">
+                          <div className={`w-1 h-1 transition-all duration-300 ${isActive ? 'scale-150' : ''}`} style={{ backgroundColor: s.color, boxShadow: isActive ? `0 0 8px ${s.color}` : 'none' }}></div>
+                          <span className={`text-[9px] lg:text-[10px] font-mono tracking-wider truncate transition-colors ${isActive ? 'text-zinc-200' : 'text-zinc-500'}`}>{s.label}</span>
+                        </div>
+                        <span className={`text-[9px] lg:text-[10px] uppercase tracking-widest truncate block transition-colors ${isActive ? 'text-zinc-400' : 'text-zinc-600'}`}>{s.sub}</span>
                       </div>
-                      <span className={`text-[8px] xl:text-[9px] font-mono px-1.5 py-0.5 rounded-sm border ${isActive ? 'border-zinc-600 text-zinc-300' : 'border-zinc-800 text-zinc-600'}`}>{rawVal != null ? meta.getStatus(rawVal) : 'OFF'}</span>
+                      <div className={`font-mono text-base lg:text-lg font-medium transition-colors ${isActive ? '' : 'opacity-50'}`} style={{ color: s.color }}>{Math.round(val)}</div>
                     </div>
-                    <div className="flex items-baseline gap-1 mt-1 z-10 shrink-0">
-                      <span className={`text-2xl xl:text-3xl font-light tracking-tighter ${isActive ? 'text-white' : 'text-zinc-300'}`}>
-                        {numericVal != null ? <AnimatedNumber value={numericVal} decimals={1} /> : '--'}
-                      </span>
-                      <span className="text-[10px] xl:text-xs font-mono text-zinc-500">{CONVERSIONS[key]?.[unitSystem]?.unit || meta.unit}</span>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* BOTTOM HALF: Telemetry Grid */}
+          <div className="flex-1 flex flex-col min-h-0 bg-zinc-950">
+            <div className="px-4 py-2 border-b border-zinc-800/80 flex justify-between items-center bg-[#09090b] shrink-0">
+              <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+                <Activity size={10} /> Live Telemetry Feed
+              </span>
+              {lastFetch && (
+                <span className="text-[9px] font-mono text-zinc-600 uppercase">SYNC: {lastFetch.toLocaleTimeString()}</span>
+              )}
+            </div>
+            
+            <div className="flex-1 flex flex-col gap-[1px] bg-zinc-800/80 overflow-y-auto custom-scrollbar lg:overflow-hidden">
+              {/* Top Row: 4 Items */}
+              <div className="flex-none lg:flex-1 grid grid-cols-2 lg:grid-cols-4 gap-[1px]">
+                {Object.keys(SENSOR_META).slice(0, 4).map(key => {
+                  const meta = SENSOR_META[key];
+                  const isActive = activeSensorKey === key;
+                  const rawVal = reading?.[key];
+                  const numericVal = rawVal != null ? (CONVERSIONS[key]?.[unitSystem]?.convert(rawVal) ?? rawVal) : null;
+                  
+                  return (
+                    <div 
+                      key={key} 
+                      onClick={() => setActiveSensorKey(key)}
+                      className={`bg-[#09090b] relative p-3 xl:p-4 flex flex-col justify-between group overflow-hidden h-full min-h-[120px] cursor-pointer transition-colors ${isActive ? 'bg-zinc-900/40' : ''}`}
+                    >
+                      <div className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-500 pointer-events-none" style={{ background: `radial-gradient(circle at top right, ${meta.iconColor}, transparent 70%)` }}></div>
+                      {isActive && <div className="absolute top-0 left-0 right-0 h-[1px]" style={{ backgroundColor: meta.iconColor, boxShadow: `0 0 8px ${meta.iconColor}`}}></div>}
+                      
+                      <div className="flex justify-between items-start z-10">
+                        <div className="flex items-center gap-2">
+                          <meta.icon size={12} style={{ color: isActive ? meta.iconColor : '#71717a' }} />
+                          <span className={`text-[9px] xl:text-[10px] font-mono tracking-widest ${isActive ? 'text-zinc-200' : 'text-zinc-400'}`}>{meta.shortLabel}</span>
+                        </div>
+                        <span className={`text-[8px] xl:text-[9px] font-mono px-1.5 py-0.5 rounded-sm border ${isActive ? 'border-zinc-600 text-zinc-300' : 'border-zinc-800 text-zinc-600'}`}>{rawVal != null ? meta.getStatus(rawVal) : 'OFF'}</span>
+                      </div>
+                      <div className="flex items-baseline gap-1 mt-1 xl:mt-2 z-10">
+                        <span className={`text-2xl xl:text-3xl font-light tracking-tighter ${isActive ? 'text-white' : 'text-zinc-300'}`}>
+                          {numericVal != null ? <AnimatedNumber value={numericVal} decimals={1} /> : '--'}
+                        </span>
+                        <span className="text-[10px] xl:text-xs font-mono text-zinc-500">{CONVERSIONS[key]?.[unitSystem]?.unit || meta.unit}</span>
+                      </div>
+                      <div className="mt-auto pt-2 z-10">
+                        <AreaChart history={history} sensorKey={key} color={meta.iconColor} unitSystem={unitSystem} />
+                      </div>
                     </div>
-                    <div className="flex-1 min-h-0 pt-1 z-10 pr-2">
-                      <AreaChart history={history} sensorKey={key} color={meta.iconColor} unitSystem={unitSystem} />
+                  )
+                })}
+              </div>
+              {/* Bottom Row: 3 Items */}
+              <div className="flex-none lg:flex-1 grid grid-cols-2 lg:grid-cols-3 gap-[1px]">
+                {Object.keys(SENSOR_META).slice(4, 7).map(key => {
+                  const meta = SENSOR_META[key];
+                  const isActive = activeSensorKey === key;
+                  const rawVal = reading?.[key];
+                  const numericVal = rawVal != null ? (CONVERSIONS[key]?.[unitSystem]?.convert(rawVal) ?? rawVal) : null;
+                  
+                  return (
+                    <div 
+                      key={key} 
+                      onClick={() => setActiveSensorKey(key)}
+                      className={`bg-[#09090b] relative p-3 xl:p-4 flex flex-col justify-between group overflow-hidden h-full min-h-[120px] cursor-pointer transition-colors ${isActive ? 'bg-zinc-900/40' : ''}`}
+                    >
+                      <div className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-500 pointer-events-none" style={{ background: `radial-gradient(circle at top right, ${meta.iconColor}, transparent 70%)` }}></div>
+                      {isActive && <div className="absolute top-0 left-0 right-0 h-[1px]" style={{ backgroundColor: meta.iconColor, boxShadow: `0 0 8px ${meta.iconColor}`}}></div>}
+                      
+                      <div className="flex justify-between items-start z-10">
+                        <div className="flex items-center gap-2">
+                          <meta.icon size={12} style={{ color: isActive ? meta.iconColor : '#71717a' }} />
+                          <span className={`text-[9px] xl:text-[10px] font-mono tracking-widest ${isActive ? 'text-zinc-200' : 'text-zinc-400'}`}>{meta.shortLabel}</span>
+                        </div>
+                        <span className={`text-[8px] xl:text-[9px] font-mono px-1.5 py-0.5 rounded-sm border ${isActive ? 'border-zinc-600 text-zinc-300' : 'border-zinc-800 text-zinc-600'}`}>{rawVal != null ? meta.getStatus(rawVal) : 'OFF'}</span>
+                      </div>
+                      <div className="flex items-baseline gap-1 mt-1 xl:mt-2 z-10">
+                        <span className={`text-2xl xl:text-3xl font-light tracking-tighter ${isActive ? 'text-white' : 'text-zinc-300'}`}>
+                          {numericVal != null ? <AnimatedNumber value={numericVal} decimals={1} /> : '--'}
+                        </span>
+                        <span className="text-[10px] xl:text-xs font-mono text-zinc-500">{CONVERSIONS[key]?.[unitSystem]?.unit || meta.unit}</span>
+                      </div>
+                      <div className="mt-auto pt-2 z-10">
+                        <AreaChart history={history} sensorKey={key} color={meta.iconColor} unitSystem={unitSystem} />
+                      </div>
                     </div>
-                  </div>
-                )
-              })}
+                  )
+                })}
+              </div>
+            </div>
           </div>
         </div>
 
+        {/* ═══ RIGHT COLUMN: Diagnostics & Context ═══ */}
+        <div className="w-full lg:w-[320px] shrink-0 flex flex-col bg-[#09090b] h-[50vh] lg:h-auto border-t lg:border-t-0 border-zinc-800/80">
+          
+          <div className="p-4 border-b border-zinc-800/80 flex items-center justify-between shrink-0">
+             <span className="text-[10px] font-mono uppercase tracking-widest flex items-center gap-2 transition-colors duration-500" style={{ color: activeColor }}>
+               Neural Diagnostics
+             </span>
+             <button onClick={fetchAnalysis} disabled={analysisLoading} className="text-zinc-600 hover:text-zinc-300 transition-colors">
+               <RefreshCw size={12} className={analysisLoading ? 'animate-spin' : ''} />
+             </button>
+          </div>
+
+          <div className="p-4 flex-1 flex flex-col min-h-0">
+             
+             {/* Scanning Visualizer Effect */}
+             <div className="h-28 shrink-0 border border-zinc-800 bg-zinc-950 relative overflow-hidden mb-5 flex items-center justify-center group">
+               <div className="absolute inset-0" style={{ backgroundImage: 'linear-gradient(#18181b 1px, transparent 1px), linear-gradient(90deg, #18181b 1px, transparent 1px)', backgroundSize: '15px 15px' }}></div>
+               
+               {(analysisLoading || !analysis.summary) && (
+                 <div className="absolute top-0 left-0 right-0 h-0.5 opacity-50 animate-[scan_3s_ease-in-out_infinite] transition-colors duration-500" style={{ backgroundColor: activeColor, boxShadow: `0 0 8px ${activeColor}` }}></div>
+               )}
+               
+               <div className="relative z-10 text-center px-4">
+                 {analysisError ? (
+                   <>
+                     <AlertCircle size={20} className="mx-auto text-[#f43f5e] mb-2" />
+                     <span className="text-[10px] font-mono text-[#f43f5e] uppercase tracking-widest block">{analysisError}</span>
+                   </>
+                 ) : !analysis.summary ? (
+                   <>
+                     <BrainCircuit size={20} className="mx-auto text-zinc-600 mb-2 transition-colors duration-500 group-hover:text-zinc-400" />
+                     <span className="text-[9px] font-mono text-zinc-500 uppercase tracking-widest block">Awaiting Context Scan</span>
+                   </>
+                 ) : (
+                   <>
+                     <CheckCircle2 size={20} className="mx-auto mb-2 transition-colors duration-500" style={{ color: activeColor }} />
+                     <span className="text-[9px] font-mono uppercase tracking-widest block" style={{ color: activeColor }}>Context Calibrated</span>
+                   </>
+                 )}
+               </div>
+             </div>
+
+             <div className="shrink-0 border border-zinc-800/80 bg-zinc-900/30 p-3 mb-5 max-h-[100px] overflow-y-auto custom-scrollbar">
+               <span className="text-[9px] font-mono text-zinc-500 uppercase tracking-widest mb-1 block">System Summary</span>
+               <p className="text-[11px] text-zinc-400 leading-relaxed font-sans tracking-tight">
+                 <span className="font-mono mr-1 transition-colors duration-500" style={{ color: activeColor }}>{'>'}</span>
+                 {analysis.summary || "LOCKED: Run analysis to process environmental payload against neural matrix."}
+               </p>
+               {analysis.flags?.length > 0 && (
+                 <div className="mt-2 pt-2 border-t border-zinc-800/50">
+                    {analysis.flags.map((flag, i) => (
+                      <div key={i} className="text-[10px] font-mono text-zinc-400 truncate"><span className="text-zinc-600">-</span> {flag}</div>
+                    ))}
+                 </div>
+               )}
+             </div>
+
+             {/* Dynamic Context Panel */}
+             <div className="flex-1 min-h-0 flex flex-col">
+               <div className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-3 border-b border-zinc-800/80 pb-2 flex justify-between items-center shrink-0">
+                 <span>Thresholds: {activeMeta?.shortLabel || activeMeta?.id}</span>
+                 <span style={{ color: activeColor }}>
+                   [{displayActiveValue} {isActivity ? 'PTS' : (CONVERSIONS[rawKey]?.[unitSystem]?.unit || activeMeta?.unit)}]
+                 </span>
+               </div>
+               
+               <div className="overflow-y-auto pr-2 space-y-4 pb-4 custom-scrollbar">
+                 {activeMeta?.ranges.map((t, idx) => {
+                   let isActiveRange = false;
+                   if (currentActiveValue != null) {
+                     const prevMax = idx > 0 ? activeMeta.ranges[idx - 1].max : -Infinity;
+                     isActiveRange = currentActiveValue > prevMax && currentActiveValue <= t.max;
+                   }
+                   
+                   return (
+                     <div key={idx} className="relative group flex flex-col gap-1.5">
+                       <div className="flex justify-between items-center">
+                         <span 
+                            className={`text-[10px] font-mono uppercase tracking-widest transition-colors ${isActiveRange ? '' : 'text-zinc-500 group-hover:text-zinc-400'}`} 
+                            style={isActiveRange ? { color: activeColor } : {}}
+                         >
+                           {t.label}
+                         </span>
+                         <span className="text-[9px] font-mono text-zinc-600">MAX: {t.max}</span>
+                       </div>
+                       
+                       <div className="h-1.5 w-full bg-zinc-900 border border-zinc-800 flex items-center p-[1px]">
+                         <div 
+                           className="h-full transition-all duration-500" 
+                           style={{ 
+                             width: isActivity ? `${t.max}%` : `${(t.max / activeMeta.max) * 100}%`,
+                             backgroundColor: isActiveRange ? activeColor : '#3f3f46',
+                           }}
+                         ></div>
+                       </div>
+
+                       <p className={`text-[10px] tracking-tight leading-relaxed transition-colors duration-300 ${isActiveRange ? 'text-zinc-300' : 'text-zinc-500'}`}>
+                         {t.text}
+                       </p>
+                     </div>
+                   );
+                 })}
+               </div>
+             </div>
+
+          </div>
+        </div>
       </main>
 
       {/* ──────────── SETTINGS DRAWER ──────────── */}

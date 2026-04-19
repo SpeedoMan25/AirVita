@@ -43,5 +43,6 @@ class RoomStatus(BaseModel):
     breakdown: Optional[ScoreBreakdown] = None
     activity_breakdowns: Dict[str, list] = Field(default_factory=dict, description="Detailed math for specialized activities")
     room_context: Optional[RoomContext] = Field(None, description="Scanner AI Layer State")
+    pairing_status: str = Field("ready", description="Current handshake state: ready, connected, completed")
     last_updated: Optional[datetime] = None
     connected: bool = Field(False, description="Whether the serial connection is active")

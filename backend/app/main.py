@@ -45,6 +45,7 @@ ACTIVE_SCENARIO_ID = "ideal"
 CURRENT_SOURCE = "live" # 'live', 'simulation', or 'weather'
 LAST_WEATHER_DATA = None
 LAST_WEATHER_FETCH_TIME = 0
+CURRENT_PAIRING_STATUS = "ready" # ready, connected, completed
 
 # Load Simulation Scenarios from JSON
 SCENARIOS_FILE = Path(__file__).parent / "scenarios.json"
@@ -292,6 +293,8 @@ def update_status_from_dict(payload_data: dict):
                 pm25_penalty=results["pm25_penalty"],
                 final_score=results["final_score"]
             ),
+            room_context=latest_status.room_context,
+            pairing_status=CURRENT_PAIRING_STATUS,
             last_updated=datetime.now(timezone.utc),
             connected=True
         )
@@ -318,7 +321,31 @@ async def root():
 
 @app.get("/api/current-status", response_model=RoomStatus)
 async def current_status():
+    global latest_status
+    latest_status.pairing_status = CURRENT_PAIRING_STATUS
     return latest_status
+
+class PairingStatusUpdate(BaseModel):
+    status: str
+
+@app.post("/api/pairing/status")
+async def update_pairing_status(update: PairingStatusUpdate):
+    global CURRENT_PAIRING_STATUS
+    # Basic validation
+    if update.status not in ["ready", "connected", "completed"]:
+        raise HTTPException(status_code=400, detail="Invalid status")
+    
+    CURRENT_PAIRING_STATUS = update.status
+    print(f"🔄 Pairing Status Updated: {CURRENT_PAIRING_STATUS}")
+    return {"status": "success", "pairing_status": CURRENT_PAIRING_STATUS}
+
+@app.post("/api/pairing/reset")
+async def reset_pairing():
+    global CURRENT_PAIRING_STATUS, latest_status
+    CURRENT_PAIRING_STATUS = "ready"
+    latest_status.room_context = None
+    print("🧹 Pairing/Context Reset")
+    return {"status": "success"}
 
 import socket
 

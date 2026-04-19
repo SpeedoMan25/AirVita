@@ -10,6 +10,8 @@ export default function RoomScanner({ onClose }) {
   const [error, setError] = useState(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
+  const [isPairingComplete, setIsPairingComplete] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     let stream = null;
@@ -23,6 +25,13 @@ export default function RoomScanner({ onClose }) {
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
           setIsStreaming(true);
+
+          // Inform backend that mobile is linked
+          fetch(`${API_BASE}/api/pairing/status`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'connected' })
+          }).catch(console.error);
         }
       } catch (err) {
         console.error("Camera access error:", err);
@@ -79,6 +88,25 @@ export default function RoomScanner({ onClose }) {
           <p>{error}</p>
           <button className="room-scanner__close" onClick={onClose}>Close</button>
         </div>
+      ) : isPairingComplete ? (
+        <div className="flex flex-col items-center justify-center p-12 text-center h-full bg-[#09090b] text-white">
+          <div className="w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-8">
+            <CheckCircle2 size={40} className="text-emerald-500" />
+          </div>
+          <h2 className="text-2xl font-bold mb-4 tracking-tight">Sync Complete</h2>
+          <div className="space-y-4 max-w-xs">
+            <p className="text-zinc-400 leading-relaxed text-sm">
+              Your room context has been exported to the primary dashboard.
+            </p>
+            <div className="p-4 bg-zinc-900/50 rounded-2xl border border-zinc-800/50">
+              <span className="text-zinc-500 text-[10px] uppercase tracking-widest block mb-1">Status</span>
+              <span className="text-emerald-500 font-mono text-xs font-bold uppercase">Scanner Dormant</span>
+            </div>
+            <p className="text-zinc-500 text-xs pt-4">
+              Return to your laptop to continue with <br/><strong>Neural AI Analysis</strong>.
+            </p>
+          </div>
+        </div>
       ) : (
         <div className="room-scanner__box">
           <div className="room-scanner__video-wrap">
@@ -116,6 +144,8 @@ export default function RoomScanner({ onClose }) {
                 <button
                   className="room-scanner__confirm-btn"
                   onClick={async () => {
+                    if (isLoading) return;
+                    setIsLoading(true);
                     const canvas = canvasRef.current;
                     const video = videoRef.current;
                     if (!canvas || !video) return;
@@ -130,51 +160,41 @@ export default function RoomScanner({ onClose }) {
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ image: base64Image, force_lock: true })
                       });
+                      
+                      // Inform backend pairing is done
+                      await fetch(`${API_BASE}/api/pairing/status`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ status: 'completed' })
+                      });
+
                       setIsLocked(true);
+                      setTimeout(() => setIsPairingComplete(true), 1500);
                     } catch (err) {
                       console.error("Locking failed:", err);
+                      setIsLoading(false);
                     }
                   }}
+                  disabled={isLoading}
                   style={{
                     marginTop: '16px',
                     width: '100%',
                     padding: '12px',
                     borderRadius: '12px',
-                    background: '#4f46e5',
+                    background: isLoading ? '#3730a3' : '#4f46e5',
                     color: '#fff',
                     border: 'none',
                     fontWeight: 700,
                     fontSize: '14px',
-                    cursor: 'pointer',
-                    boxShadow: '0 4px 12px rgba(79,70,229,0.2)'
+                    cursor: isLoading ? 'not-allowed' : 'pointer',
+                    boxShadow: '0 4px 12px rgba(79,70,229,0.2)',
+                    opacity: isLoading ? 0.7 : 1
                   }}
                 >
-                  Confirm Room Mapping
+                  {isLoading ? 'Uploading results...' : 'Confirm Room Mapping'}
                 </button>
               )}
 
-              {isLocked && (
-                <div style={{ marginTop: '16px', textAlign: 'center' }}>
-                  <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '12px' }}>
-                    Environment synced to dashboard. You can now close this and use the Neural Insights.
-                  </p>
-                  <button
-                    onClick={onClose}
-                    style={{
-                      padding: '10px 20px',
-                      borderRadius: '10px',
-                      border: '1px solid #e2e8f0',
-                      background: '#fff',
-                      color: '#1e293b',
-                      fontSize: '14px',
-                      fontWeight: 700,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Return to Dashboard
-                  </button>
-                </div>
-              )}
             </div>
           </div>
         </div>
