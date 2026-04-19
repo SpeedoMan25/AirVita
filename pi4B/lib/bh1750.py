@@ -20,7 +20,7 @@ class BH1750:
             self.bus.write_byte(self.address, self.mode)
             self.initialized = True
             return True
-        except Exception as e_primary:
+        except Exception:
             # Try alternate address if primary fails
             alt_address = 0x5C if self.address == 0x23 else 0x23
             try:
@@ -31,9 +31,8 @@ class BH1750:
                 self.initialized = True
                 print(f"BH1750 found at alternate address: {hex(self.address)}")
                 return True
-            except Exception as e_alt:
-                print(f"BH1750 Init Failed on all addresses.\nPrimary Error: {e_primary}\nAlternate Error: {e_alt}")
-                print("HINT: Ensure I2C is enabled in sudo raspi-config and wiring to GPIO 2/3 is correct.")
+            except Exception as e:
+                print(f"BH1750 Init Failed on all addresses: {e}")
                 self.initialized = False
                 return False
 

@@ -57,5 +57,5 @@ class MicrophoneHandler:
                 
             return round(db, 2)
         except Exception as e:
-            print(f"⚠️ Mic Capture Error (Check I2S overlay): {e}")
+            # print(f"Mic Capture Error: {e}")
             return 0.0
