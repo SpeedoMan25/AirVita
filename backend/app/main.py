@@ -142,7 +142,7 @@ import socket
 
 def get_lan_ip():
     host_ip = os.getenv("HOST_IP")
-    if host_ip:
+    if host_ip and host_ip != "127.0.0.1":
         return host_ip
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -176,7 +176,7 @@ async def lifespan(app: FastAPI):
     
     # Print LAN-accessible URLs banner
     ip = get_lan_ip()
-    frontend_url = f"https://{ip}:5173"
+    frontend_url = f"http://{ip}:5173"
     backend_url = f"http://{ip}:8000"
     frontend_link = f"\033]8;;{frontend_url}\033\\{frontend_url}\033]8;;\033\\"
     backend_link = f"\033]8;;{backend_url}\033\\{backend_url}\033]8;;\033\\"
@@ -352,14 +352,8 @@ import socket
 @app.get("/api/connection-info")
 async def connection_info():
     """Returns the LAN IP for mobile pairing."""
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80))
-        ip = s.getsockname()[0]
-        s.close()
-        return {"ip": ip, "url": f"https://{ip}:5173"}
-    except Exception:
-        return {"ip": "127.0.0.1", "url": "https://localhost:5173"}
+    ip = get_lan_ip()
+    return {"ip": ip, "url": f"http://{ip}:5173"}
 
 @app.get("/api/analyze")
 async def analyze_room():

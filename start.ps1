@@ -9,7 +9,7 @@ if (-not $IP) {
 
 Write-Host ""
 Write-Host "Starting AirVita..." -ForegroundColor Cyan
-$url = "https://${IP}:5173"
+$url = "http://${IP}:5173"
 Write-Host "Dashboard will open at: $url" -ForegroundColor Green
 Write-Host ""
 
