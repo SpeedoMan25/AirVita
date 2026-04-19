@@ -7,6 +7,26 @@
   animation: slideUp 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
+@media (max-width: 768px) {
+  .room-scanner {
+    bottom: 0;
+    right: 0;
+    width: 100vw;
+    height: 100vh;
+    animation: none;
+  }
+  .room-scanner__box {
+    border-radius: 0;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  .room-scanner__video-wrap {
+    flex: 1;
+    aspect-ratio: auto;
+  }
+}
+
 @keyframes slideUp {
   from { transform: translateY(50px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }

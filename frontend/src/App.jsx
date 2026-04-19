@@ -8,9 +8,7 @@ import RoomScanner from './components/RoomScanner'
 import MobilePairing from './components/MobilePairing'
 import './App.css'
 
-const API_BASE = import.meta.env.DEV
-  ? `http://${window.location.hostname}:8000`
-  : import.meta.env.VITE_API_URL || '';
+const API_BASE = '';
 const POLL_INTERVAL_MS = 2000
 
 export default function App() {

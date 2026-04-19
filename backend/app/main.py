@@ -135,6 +135,20 @@ def predict_score(data: dict) -> dict:
     }
 
 from app.cv import classifier
+import socket
+
+def get_lan_ip():
+    host_ip = os.getenv("HOST_IP")
+    if host_ip:
+        return host_ip
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return "127.0.0.1"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -156,6 +170,21 @@ async def lifespan(app: FastAPI):
     
     # Start background task for data generation
     generator_task = asyncio.create_task(run_data_generator())
+    
+    # Print LAN-accessible URLs banner
+    ip = get_lan_ip()
+    frontend_url = f"https://{ip}:5173"
+    backend_url = f"http://{ip}:8000"
+    frontend_link = f"\033]8;;{frontend_url}\033\\{frontend_url}\033]8;;\033\\"
+    backend_link = f"\033]8;;{backend_url}\033\\{backend_url}\033]8;;\033\\"
+    
+    print("\n" + "─" * 30, flush=True)
+    print("🚀 RoomPulse Running\n", flush=True)
+    print("📱 Frontend:", flush=True)
+    print(f"{frontend_link}\n", flush=True)
+    print("⚙️ Backend:", flush=True)
+    print(f"{backend_link}", flush=True)
+    print("─" * 30 + "\n", flush=True)
     
     yield
     generator_task.cancel()
