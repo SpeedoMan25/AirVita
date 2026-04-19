@@ -22,7 +22,7 @@ class MicrophoneHandler:
         Captures a chunk of audio and returns the Decibel (dB) level.
         """
         if not self.sd:
-            return 35.0 + np.random.uniform(-2, 2) # Mock ambient noise
+            return 0.0  # No microphone driver available
 
         try:
             # Capture a small chunk of audio
