@@ -5,7 +5,7 @@ import requests
 import uuid
 import sys
 
-# Import custom drivers from lib/
+# Setup paths
 sys.path.append(os.path.join(os.path.dirname(__file__), 'lib'))
 try:
     from dht11_handler import DHT11Handler
@@ -17,7 +17,7 @@ except ImportError as e:
 
 # --- Configuration ---
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000").strip(' "\u201d\u201c')
-DEVICE_ID = os.getenv("DEVICE_ID", hex(uuid.getnode())) # MAC address based ID
+DEVICE_ID = os.getenv("DEVICE_ID", hex(uuid.getnode()))
 POLL_INTERVAL = 2  # Seconds
 
 def main():
