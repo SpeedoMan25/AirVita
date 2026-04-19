@@ -1,115 +1,114 @@
 import machine
-from machine import I2S, Pin
+import struct
 import time
 import math
-import struct
-import sys
 
-# Standard Path setup for the LCD driver
-if "/lib" not in sys.path:
-    sys.path.append("/lib")
-
-try:
-    from pico_i2c_lcd import I2cLcd
-except ImportError:
-    try:
-        from lib.pico_i2c_lcd import I2cLcd
-    except ImportError:
-        I2cLcd = None
-
-# 1. Configuration
+# --- CONFIGURATION ---
 SCK_PIN = 16
 WS_PIN = 17
 SD_PIN = 18
-I2C_SDA = 0
-I2C_SCL = 1
-LCD_ADDR = 0x27
 
-# 2. I2S Initialization (Bus 0)
-audio_in = I2S(
-    0, 
-    sck=Pin(SCK_PIN), 
-    ws=Pin(WS_PIN), 
-    sd=Pin(SD_PIN),
-    mode=I2S.RX, 
-    bits=32,          # 24-bit data padded to 32 bits
-    format=I2S.MONO, 
-    rate=16000, 
-    ibuf=2048
-)
+SAMPLE_RATE = 16000
+BITS_PER_SAMPLE = 32
+BUFFER_SIZE = 32768
 
-# 3. LCD Initialization (Optional)
-lcd = None
-try:
-    i2c = machine.I2C(0, sda=Pin(I2C_SDA), scl=Pin(I2C_SCL))
-    if LCD_ADDR in i2c.scan():
-        lcd = I2cLcd(i2c, LCD_ADDR, 2, 16)
-except Exception:
-    pass
+# Calibration/Filtering
+# Observations show hardware glitches hit exactly ~8.38M (0x7FFFFF)
+GLITCH_THRESHOLD = 8000000 
+ALPHA = 0.05 # Baseline smoothing factor
 
-def calculate_volume(buffer):
-    """Calculates a basic volume level (RMS) from raw 32-bit I2S data."""
-    count = len(buffer) // 4
-    if count == 0: return 0
+# UI
+BAR_WIDTH = 50
+MAX_RMS = 50000 # Scaling for talking volume
+
+# --- INITIALIZATION ---
+print("\n" + "="*45)
+print("--- STABILIZED MIC METER (INMP441) ---")
+print("Status: Hardware Glitch Filtering Active")
+print("="*45)
+
+# Configure I2S
+mic = machine.I2S(0, 
+                  sck=machine.Pin(SCK_PIN), 
+                  ws=machine.Pin(WS_PIN), 
+                  sd=machine.Pin(SD_PIN),
+                  mode=machine.I2S.RX, 
+                  bits=BITS_PER_SAMPLE, 
+                  format=machine.I2S.STEREO,
+                  rate=SAMPLE_RATE, 
+                  ibuf=BUFFER_SIZE)
+
+SAMPLES_PER_READ = 256
+read_buf = bytearray(SAMPLES_PER_READ * 8)
+
+def get_clean_samples():
+    """Reads samples and filters out 8.38M hardware spikes."""
+    bytes_read = mic.readinto(read_buf)
+    if bytes_read == 0:
+        return []
     
-    # Unpack as signed integers (l or i for 32-bit signed)
-    # The microphone returns 24bit data shifted into a 32bit int
-    samples = struct.unpack(str(count) + 'i', buffer)
+    count = bytes_read // 4
+    raw = struct.unpack(f'<{count}i', read_buf[:bytes_read])
     
-    sum_sq = 0
-    for s in samples:
-        # Normalize the 32-bit signed value to a small float to avoid overflow
-        val = s / 1048576.0 # Normalize relative to ~20 bits of data
-        sum_sq += val * val
+    clean = []
+    # Only look at Left channel [0, 2, 4...]
+    for i in range(0, count, 2):
+        s = raw[i] >> 8
+        # REJECT spikes that hit the ceiling or floor of the 24-bit range
+        if abs(s) < GLITCH_THRESHOLD:
+            clean.append(s)
+            
+    return clean
+
+def run_loop():
+    baseline = 0
+    active_samples = 0
+    
+    print("\nStabilizing Mic (0.5s)...")
+    start_stab = time.ticks_ms()
+    while time.ticks_diff(time.ticks_ms(), start_stab) < 500:
+        mic.readinto(read_buf) # Drain startup noise
         
-    rms = math.sqrt(sum_sq / count)
-    return rms
-
-def run_test():
-    print("--- V2 I2S Microphone Test (INMP441) ---")
-    print(f"I2S SCK:GP{SCK_PIN}, WS:GP{WS_PIN}, SD:GP{PD_PIN if 'PD_PIN' in locals() else SD_PIN}")
-    print("Clap or speak to see volume levels!")
-    print("Press Ctrl+C to stop.")
-    
-    # Buffer for audio data
-    buffer = bytearray(1024)
+    print("Starting Meter. Press Ctrl+C to stop.\n")
     
     try:
-        if lcd:
-            lcd.clear()
-            lcd.putstr("V2 Mic Test")
-            lcd.move_to(0, 1)
-            lcd.putstr("Listening...")
-            
         while True:
-            # Read from I2S
-            num_bytes = audio_in.readinto(buffer)
+            samples = get_clean_samples()
+            if not samples:
+                # If everything was a glitch, we just skip this frame
+                continue
             
-            if num_bytes > 0:
-                # Calculate relative volume
-                vol = calculate_volume(buffer[:num_bytes])
-                
-                # Create a simple console bar graph
-                bar_len = min(int(vol * 2), 50)
-                bar = "#" * bar_len
-                print(f"VOL: {vol:7.1f} | {bar}")
-                
-                # Update LCD if detected
-                if lcd:
-                    lcd.move_to(0, 1)
-                    lcd.putstr(f"Volume: {vol:7.1f}  ")
+            # 1. Update Baseline (DC Offset removal)
+            current_avg = sum(samples) / len(samples)
+            if baseline == 0:
+                baseline = current_avg
+            else:
+                baseline = (ALPHA * current_avg) + ((1 - ALPHA) * baseline)
             
-            time.sleep(0.05)
+            # 2. Calculate RMS from valid samples
+            sum_sq = sum((s - baseline)**2 for s in samples)
+            rms = math.sqrt(sum_sq / len(samples))
             
+            # 3. Peak detection
+            peak = max(abs(s - baseline) for s in samples)
+            
+            # 4. Visualization
+            # Scale RMS to bar
+            bar_len = int(min(BAR_WIDTH, (rms / MAX_RMS) * BAR_WIDTH))
+            bar = "#" * bar_len + "-" * (BAR_WIDTH - bar_len)
+            
+            # Print status
+            # We show a small [!] if we had many glitches (short clean list)
+            glitch_indicator = " [!]" if len(samples) < (SAMPLES_PER_READ * 0.5) else "    "
+            print(f"VOL: [{bar}] | RMS: {int(rms):5d} | PEAK: {int(peak):6d}{glitch_indicator}", end="\r")
+            
+            time.sleep(0.02) # Fast update
+
     except KeyboardInterrupt:
-        print("\nStopping...")
-    except Exception as e:
-        print(f"Error: {e}")
+        print("\n\nStopping...")
     finally:
-        audio_in.deinit()
-        if lcd: 
-            lcd.clear()
-            lcd.putstr("Test Stopped")
+        mic.deinit()
+        print("I2S Deinitialized.")
 
 if __name__ == "__main__":
-    run_test()
+    run_loop()

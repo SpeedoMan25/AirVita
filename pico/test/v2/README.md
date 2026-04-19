@@ -33,7 +33,7 @@ This is the second iteration of the testing suite, redesigned for a Pico breakou
 ### Phase 7-8: Atmosphere & Environmental
 - **Air Quality:** `python -m mpremote connect COM4 run pico/test/v2/air_test_v2.py`
 - **Environment:** `python -m mpremote connect COM4 run pico/test/v2/bme_test.py` 
-  *(Measures Temp, Hum, Pressure, and VOC Gas Resistance)*
+  *(Measures Temp, Hum, Pressure, and VOC Gas Resistance. Uses a custom driver that handles NVM calibration logic).*
 
 ### Phase 9: Alerts & Simulations
 - **Buzzer:** `python -m mpremote connect COM4 run pico/test/v2/buzzer_test.py`

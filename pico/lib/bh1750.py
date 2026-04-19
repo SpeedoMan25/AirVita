@@ -12,8 +12,11 @@ class BH1750:
         
     def init(self):
         try:
-            self.i2c.writeto(self.address, bytes([0x01])) # Power On
-            time.sleep(0.1)
+            # 0x01 = Power On, 0x07 = Reset, 0x10 = Continuous H-Res
+            self.i2c.writeto(self.address, bytes([0x01])) 
+            time.sleep(0.05)
+            self.i2c.writeto(self.address, bytes([0x07])) # Soft Reset
+            time.sleep(0.05)
             self.i2c.writeto(self.address, bytes([self.mode]))
         except Exception as e:
             print(f"BH1750 Init Failed: {e}")
