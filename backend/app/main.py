@@ -265,60 +265,64 @@ def get_unique_room_name(room_type: str, current_device_id: str) -> str:
 def update_status_from_dict(payload_data: dict, device_id: str = "simulation"):
     """Utility to run prediction and update specific monitor status."""
     global monitors
-    results = predict_score(payload_data)
     
-    # Ensure monitor exists in registry
     if device_id not in monitors:
+        print(f"📡 New Device Detected: {device_id}. Auto-registering...")
         monitors[device_id] = RoomStatus(
             device_id=device_id,
-            display_name="Simulation" if device_id == "simulation" else "New Monitor",
+            display_name=f"Unit {device_id[-4:]}" if len(device_id) > 4 else f"Unit {device_id}",
+            pairing_status="completed",
             connected=True
         )
+    
+    results = predict_score(payload_data)
+    if "error" in results:
+        print(f"⚠️ Prediction Error for {device_id}: {results.get('error')}")
+        if device_id in monitors:
+            monitors[device_id].connected = False
+        return
+    
+    reading = SensorReading(
+        **results["reading"],
+        device_id=device_id,
+        timestamp_ms=int(datetime.now(timezone.utc).timestamp() * 1000)
+    )
+    
+    # Calculate base scores
+    scores_reading = results["reading"]
+    
+    # Use outdoor-aware health score
+    final_score = calculate_room_health_score(scores_reading, outdoor=LAST_WEATHER_DATA)
 
-    if "error" not in results:
-        reading = SensorReading(
-            **results["reading"],
-            device_id=device_id,
-            timestamp_ms=int(datetime.now(timezone.utc).timestamp() * 1000)
-        )
-        
-        # Calculate base scores
-        scores_reading = results["reading"]
-        
-        # Use outdoor-aware health score
-        final_score = calculate_room_health_score(scores_reading, outdoor=LAST_WEATHER_DATA)
+    # Calculate sub-activity scores
+    sleep_res = calculate_sleep_score_with_breakdown(scores_reading)
+    work_res = calculate_work_score_with_breakdown(scores_reading)
+    fun_res = calculate_fun_score_with_breakdown(scores_reading)
 
-        # Calculate sub-activity scores
-        sleep_res = calculate_sleep_score_with_breakdown(scores_reading)
-        work_res = calculate_work_score_with_breakdown(scores_reading)
-        fun_res = calculate_fun_score_with_breakdown(scores_reading)
-
-        # Update specific monitor
-        m = monitors[device_id]
-        m.reading = reading
-        m.score = final_score
-        m.sleep_score = sleep_res["score"]
-        m.work_score = work_res["score"]
-        m.fun_score = fun_res["score"]
-        m.activity_breakdowns = {
-            "sleep": sleep_res["breakdown"],
-            "work": work_res["breakdown"],
-            "fun": fun_res["breakdown"],
-        }
-        m.breakdown = ScoreBreakdown(
-            base_mlp_score=results["base_score"],
-            voc_penalty=results["voc_penalty"],
-            pm25_penalty=results["pm25_penalty"],
-            final_score=results["final_score"]
-        )
-        m.last_updated = datetime.now(timezone.utc)
-        m.connected = True
-        
-        # If simulation, force status (some sources use jitter)
-        if device_id == "simulation":
-            m.pairing_status = "completed"
-    else:
-        monitors[device_id].connected = False
+    # Update specific monitor
+    m = monitors[device_id]
+    m.reading = reading
+    m.score = final_score
+    m.sleep_score = sleep_res["score"]
+    m.work_score = work_res["score"]
+    m.fun_score = fun_res["score"]
+    m.activity_breakdowns = {
+        "sleep": sleep_res["breakdown"],
+        "work": work_res["breakdown"],
+        "fun": fun_res["breakdown"],
+    }
+    m.breakdown = ScoreBreakdown(
+        base_mlp_score=results["base_score"],
+        voc_penalty=results["voc_penalty"],
+        pm25_penalty=results["pm25_penalty"],
+        final_score=results["final_score"]
+    )
+    m.last_updated = datetime.now(timezone.utc)
+    m.connected = True
+    
+    # If simulation, force status (some sources use jitter)
+    if device_id == "simulation":
+        m.pairing_status = "completed"
 
 app = FastAPI(title="AirVita Hybrid IAQ Backend", lifespan=lifespan)
 
