@@ -135,11 +135,15 @@ from app.cv import classifier
 import socket
 
 def get_lan_ip():
+    """Detects the host IP, prioritizing environment variables."""
     host_ip = os.getenv("HOST_IP")
     if host_ip and host_ip != "127.0.0.1":
         return host_ip
+    
+    # Simple fallback check
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.settimeout(0.5) # Don't hang the whole server
         s.connect(("8.8.8.8", 80))
         ip = s.getsockname()[0]
         s.close()
