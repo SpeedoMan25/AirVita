@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from typing import Dict, List, Optional
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import joblib
@@ -28,15 +29,7 @@ SCALER_PATH = MODEL_DIR / "scaler.pkl"
 # Global variables for model, scaler, and state
 model = None
 scaler = None
-latest_status = RoomStatus(
-    reading=None,
-    score=0,
-    sleep_score=0,
-    work_score=0,
-    fun_score=0,
-    last_updated=None,
-    connected=False
-)
+monitors: Dict[str, RoomStatus] = {}
 
 # Simulation State
 AUTO_CYCLE = False 
@@ -67,16 +60,17 @@ COEFF_PARTICLES = -0.05
 BIAS = 0.0
 
 class SensorDataPayload(BaseModel):
+    device_id: str = Field(..., description="Unique ID of the transmitting device")
     humidity: float
     pressure: float
     light: float
     temperature: float
-    sound_high: float
-    sound_mid: float
-    sound_low: float
-    sound_amp: float
-    vocs: float = Field(..., description="VOC level in ppb")
-    particulates: float = Field(..., description="PM2.5 level in ug/m3")
+    sound_high: float = 0.0
+    sound_mid: float = 0.0
+    sound_low: float = 0.0
+    sound_amp: float = 0.0
+    vocs: float = Field(0.0, description="VOC level in ppb")
+    particulates: float = Field(0.0, description="PM2.5 level in ug/m3")
 
 def calculate_final_iaq(base_score: float, vocs: float, particulates: float) -> int:
     score = (base_score * COEFF_MLP_BASE) + (vocs * COEFF_VOC) + (particulates * COEFF_PARTICLES) + BIAS
@@ -197,7 +191,7 @@ async def run_data_generator():
     """
     Background job that generates data based on CURRENT_SOURCE.
     """
-    global latest_status, AUTO_CYCLE, CURRENT_SOURCE, LAST_WEATHER_DATA, LAST_WEATHER_FETCH_TIME
+    global AUTO_CYCLE, CURRENT_SOURCE, LAST_WEATHER_DATA, LAST_WEATHER_FETCH_TIME
     import random
     
     print("🛰️ Data Generator Task Started.")
@@ -216,7 +210,6 @@ async def run_data_generator():
                 print(f"Weather update error: {e}")
 
         if CURRENT_SOURCE == "simulation":
-            # ... existing simulation logic ...
             if AUTO_CYCLE and (now - last_cycle_time > 8):
                 global CURRENT_SCENARIO_INDEX, ACTIVE_SCENARIO_ID
                 CURRENT_SCENARIO_INDEX = (CURRENT_SCENARIO_INDEX + 1) % len(SIMULATION_SCENARIOS)
@@ -238,7 +231,7 @@ async def run_data_generator():
                     "vocs": jitter(s["inputs"]["vocs"]), 
                     "particulates": jitter(s["inputs"]["particulates"])
                 }
-                update_status_from_dict(payload)
+                update_status_from_dict(payload, device_id="simulation")
         
         elif CURRENT_SOURCE == "weather" and LAST_WEATHER_DATA:
             # Map weather data to sensor payload
@@ -251,17 +244,41 @@ async def run_data_generator():
                 "vocs": LAST_WEATHER_DATA.get("voc_ppb", 0),
                 "particulates": LAST_WEATHER_DATA.get("pm25_ugm3", 5)
             }
-            update_status_from_dict(payload)
+            update_status_from_dict(payload, device_id="weather")
         
         await asyncio.sleep(2)
 
-def update_status_from_dict(payload_data: dict):
-    """Utility to run prediction and update latest_status."""
-    global latest_status
+def get_unique_room_name(room_type: str, current_device_id: str) -> str:
+    """Calculates a unique name for a room, adding a number if duplicates exist."""
+    # Find all other devices that have the same room_type
+    similar_monitors = [
+        m for m in monitors.values() 
+        if m.room_context and m.room_context.room_type == room_type
+        and m.device_id != current_device_id
+    ]
+    
+    if not similar_monitors:
+        return room_type
+    
+    return f"{room_type} {len(similar_monitors) + 1}"
+
+def update_status_from_dict(payload_data: dict, device_id: str = "simulation"):
+    """Utility to run prediction and update specific monitor status."""
+    global monitors
     results = predict_score(payload_data)
+    
+    # Ensure monitor exists in registry
+    if device_id not in monitors:
+        monitors[device_id] = RoomStatus(
+            device_id=device_id,
+            display_name="Simulation" if device_id == "simulation" else "New Monitor",
+            connected=True
+        )
+
     if "error" not in results:
         reading = SensorReading(
             **results["reading"],
+            device_id=device_id,
             timestamp_ms=int(datetime.now(timezone.utc).timestamp() * 1000)
         )
         
@@ -271,38 +288,37 @@ def update_status_from_dict(payload_data: dict):
         # Use outdoor-aware health score
         final_score = calculate_room_health_score(scores_reading, outdoor=LAST_WEATHER_DATA)
 
-        # Calculate sub-activity scores with math internal
+        # Calculate sub-activity scores
         sleep_res = calculate_sleep_score_with_breakdown(scores_reading)
         work_res = calculate_work_score_with_breakdown(scores_reading)
         fun_res = calculate_fun_score_with_breakdown(scores_reading)
 
-        latest_status = RoomStatus(
-            reading=reading,
-            score=final_score,
-            sleep_score=sleep_res["score"],
-            work_score=work_res["score"],
-            fun_score=fun_res["score"],
-            activity_breakdowns={
-                "sleep": sleep_res["breakdown"],
-                "work": work_res["breakdown"],
-                "fun": fun_res["breakdown"],
-            },
-            breakdown=ScoreBreakdown(
-                base_mlp_score=results["base_score"],
-                voc_penalty=results["voc_penalty"],
-                pm25_penalty=results["pm25_penalty"],
-                final_score=results["final_score"]
-            ),
-            room_context=latest_status.room_context,
-            pairing_status=CURRENT_PAIRING_STATUS,
-            last_updated=datetime.now(timezone.utc),
-            connected=True
+        # Update specific monitor
+        m = monitors[device_id]
+        m.reading = reading
+        m.score = final_score
+        m.sleep_score = sleep_res["score"]
+        m.work_score = work_res["score"]
+        m.fun_score = fun_res["score"]
+        m.activity_breakdowns = {
+            "sleep": sleep_res["breakdown"],
+            "work": work_res["breakdown"],
+            "fun": fun_res["breakdown"],
+        }
+        m.breakdown = ScoreBreakdown(
+            base_mlp_score=results["base_score"],
+            voc_penalty=results["voc_penalty"],
+            pm25_penalty=results["pm25_penalty"],
+            final_score=results["final_score"]
         )
+        m.last_updated = datetime.now(timezone.utc)
+        m.connected = True
+        
+        # If simulation, force status (some sources use jitter)
+        if device_id == "simulation":
+            m.pairing_status = "completed"
     else:
-        # Real Serial Logic (Simplified to keep main.py clean)
-        # In a real app, this would use the serial_reader.py logic
-        print("🔌 Production Mode: Waiting for serial data...")
-        pass
+        monitors[device_id].connected = False
 
 app = FastAPI(title="AirVita Hybrid IAQ Backend", lifespan=lifespan)
 
@@ -320,31 +336,62 @@ async def root():
     return {"service": "AirVita API", "status": "running"}
 
 @app.get("/api/current-status", response_model=RoomStatus)
-async def current_status():
-    global latest_status
-    latest_status.pairing_status = CURRENT_PAIRING_STATUS
-    return latest_status
+async def current_status(device_id: Optional[str] = None):
+    global monitors
+    # Default to first live device, or simulation if nothing else exists
+    if not device_id:
+        live_ids = [k for k in monitors.keys() if k not in ["simulation", "weather"]]
+        device_id = live_ids[0] if live_ids else "simulation"
+    
+    if device_id not in monitors:
+        # Create a blank entry if it doesn't exist (e.g. simulation hasn't run yet)
+        if device_id == "simulation":
+            update_status_from_dict({}, device_id="simulation")
+        else:
+            raise HTTPException(status_code=404, detail=f"Monitor {device_id} not found")
+            
+    return monitors[device_id]
+
+@app.get("/api/monitors")
+async def get_monitors():
+    """Returns a list of all active monitors."""
+    return [
+        {
+            "id": m.device_id,
+            "name": m.display_name,
+            "connected": m.connected,
+            "room_type": m.room_context.room_type if m.room_context else None
+        }
+        for m in monitors.values()
+    ]
 
 class PairingStatusUpdate(BaseModel):
+    device_id: str
     status: str
 
 @app.post("/api/pairing/status")
 async def update_pairing_status(update: PairingStatusUpdate):
-    global CURRENT_PAIRING_STATUS
-    # Basic validation
+    if update.device_id not in monitors:
+         raise HTTPException(status_code=404, detail="Monitor not found")
+    
     if update.status not in ["ready", "connected", "completed"]:
         raise HTTPException(status_code=400, detail="Invalid status")
     
-    CURRENT_PAIRING_STATUS = update.status
-    print(f"🔄 Pairing Status Updated: {CURRENT_PAIRING_STATUS}")
-    return {"status": "success", "pairing_status": CURRENT_PAIRING_STATUS}
+    monitors[update.device_id].pairing_status = update.status
+    print(f"🔄 Pairing Status [ {update.device_id} ]: {update.status}")
+    return {"status": "success", "pairing_status": update.status}
+
+class PairingReset(BaseModel):
+    device_id: str
 
 @app.post("/api/pairing/reset")
-async def reset_pairing():
-    global CURRENT_PAIRING_STATUS, latest_status
-    CURRENT_PAIRING_STATUS = "ready"
-    latest_status.room_context = None
-    print("🧹 Pairing/Context Reset")
+async def reset_pairing(reset: PairingReset):
+    if reset.device_id not in monitors:
+        raise HTTPException(status_code=404, detail="Monitor not found")
+    
+    monitors[reset.device_id].pairing_status = "ready"
+    monitors[reset.device_id].room_context = None
+    print(f"🧹 Pairing/Context Reset [ {reset.device_id} ]")
     return {"status": "success"}
 
 import socket
@@ -356,39 +403,43 @@ async def connection_info():
     return {"ip": ip, "url": f"http://{ip}:5173"}
 
 @app.get("/api/analyze")
-async def analyze_room():
+async def analyze_room(device_id: str):
     """
-    Triggers a Gemini AI analysis of the current room environment.
+    Triggers a Gemini AI analysis for a specific room environment.
     """
-    if not latest_status.reading:
+    if device_id not in monitors:
+        raise HTTPException(status_code=404, detail="Monitor not found")
+        
+    m = monitors[device_id]
+    
+    if not m.reading:
         return {"summary": "Waiting for sensor data...", "flags": []}
         
-    if not latest_status.room_context:
+    if not m.room_context:
         return {
             "summary": "LOCKED: Please use the Room Scanner to capture environmental context before accessing Neural AI insights.",
             "flags": ["Missing Visual Context"]
         }
     
     # Format the reading for Gemini
-    reading_dict = latest_status.reading.model_dump()
+    reading_dict = m.reading.model_dump()
     scores = {
-        "health": latest_status.score,
-        "sleep": latest_status.sleep_score,
-        "work": latest_status.work_score,
-        "fun": latest_status.fun_score
+        "health": m.score,
+        "sleep": m.sleep_score,
+        "work": m.work_score,
+        "fun": m.fun_score
     }
-    room_ctx = latest_status.room_context.model_dump()
+    room_ctx = m.room_context.model_dump()
     analysis = generate_analysis(reading_dict, scores, room_ctx)
     return analysis
 
 @app.post("/api/sensor-data")
 async def process_sensor_data(payload: SensorDataPayload):
     try:
-        update_status_from_dict(payload.model_dump())
+        update_status_from_dict(payload.model_dump(), device_id=payload.device_id)
         return {
             "status": "success",
-            "base_mlp_score": round(latest_status.breakdown.base_mlp_score, 2),
-            "final_iaq_score": latest_status.score
+            "final_iaq_score": monitors[payload.device_id].score
         }
     except Exception as e:
         print(f"Prediction Error: {e}")
@@ -446,15 +497,28 @@ async def health():
 async def scan_room(payload: dict):
     if "image" not in payload:
         raise HTTPException(status_code=400, detail="Image required")
+    
+    device_id = payload.get("device_id")
+    if not device_id or device_id not in monitors:
+         raise HTTPException(status_code=400, detail="Valid device_id required")
+
     result = classifier.predict(payload["image"])
     if "error" in result:
         raise HTTPException(status_code=500, detail=result["error"])
         
     if result.get("confidence", 0) > 0.60 or payload.get("force_lock"):
         from app.models import RoomContext
-        latest_status.room_context = RoomContext(
-            room_type=result.get("room", "Unknown"),
+        room_type = result.get("room", "Unknown")
+        
+        # Update Room Context
+        m = monitors[device_id]
+        m.room_context = RoomContext(
+            room_type=room_type,
             identified_objects=result.get("objects", [])
         )
+        
+        # Dynamically trigger renaming with deduplication logic
+        m.display_name = get_unique_room_name(room_type, device_id)
+        print(f"🏷️ Device Renamed [ {device_id} ] -> {m.display_name}")
         
     return result

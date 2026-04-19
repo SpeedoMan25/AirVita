@@ -22,6 +22,7 @@ class SensorReading(BaseModel):
     pm25_ugm3: Optional[float] = Field(None, description="PM2.5 particulate matter in µg/m³")
     voc_ppb: Optional[float] = Field(None, description="Volatile organic compounds in ppb")
     pot_pct: float = Field(0.0, description="Potentiometer setting percentage")
+    device_id: str = Field("unknown", description="ID of the device that generated this reading")
     timestamp_ms: Optional[int] = Field(None, description="Pico tick timestamp")
 
 
@@ -35,6 +36,8 @@ class ScoreBreakdown(BaseModel):
 
 class RoomStatus(BaseModel):
     """Full API response with sensor data + computed score."""
+    device_id: str = Field(..., description="Unique Hardware ID")
+    display_name: str = Field("New Monitor", description="Human-readable name")
     reading: Optional[SensorReading] = None
     score: int = Field(0, ge=0, le=99, description="Room Health Score (1-99, 0 = no data)")
     sleep_score: int = Field(0, ge=0, le=99, description="Sleeping Conditions Score (1-99, 0 = no data)")

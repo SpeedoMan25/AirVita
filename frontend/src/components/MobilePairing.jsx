@@ -4,17 +4,18 @@ import './MobilePairing.css';
 
 const API_BASE = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || '');
 
-export default function MobilePairing({ onClose }) {
+export default function MobilePairing({ onClose, deviceId }) {
   const [info, setInfo] = useState({ ip: 'Loading...', url: '' });
   const [error, setError] = useState(null);
 
   useEffect(() => {
     // USING CLOUDFLARE TUNNEL FOR TRUSTED HTTPS (Solves Black Screen)
+    const base = 'twelve-thompson-overhead-homework.trycloudflare.com';
     setInfo({ 
-      ip: 'twelve-thompson-overhead-homework.trycloudflare.com', 
-      url: `https://twelve-thompson-overhead-homework.trycloudflare.com#scan` 
+      ip: base, 
+      url: `https://${base}?device_id=${deviceId}#scan` 
     });
-  }, []);
+  }, [deviceId]);
 
   return (
     <div className="pairing-overlay" onClick={onClose}>

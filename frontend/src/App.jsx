@@ -336,6 +336,8 @@ export default function App() {
   const [analysisCooldown, setAnalysisCooldown] = useState(0)
 
   const [activeSensorKey, setActiveSensorKey] = useState('activity_fun')
+  const [activeMonitorId, setActiveMonitorId] = useState('simulation')
+  const [monitorsList, setMonitorsList] = useState([])
   const [isTechOpen, setIsTechOpen] = useState(false)
   const [unitSystem, setUnitSystem] = useState('imperial')
   const [isScannerOpen, setIsScannerOpen] = useState(false)
@@ -344,7 +346,7 @@ export default function App() {
   /* ── Data Fetching ── */
   const fetchStatus = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/current-status`)
+      const res = await fetch(`${API_BASE}/api/current-status?device_id=${activeMonitorId}`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
       setStatus(data)
@@ -364,7 +366,25 @@ export default function App() {
     } catch (err) {
       setError(`Unable to reach backend: ${err.message}`)
     }
-  }, [])
+  }, [activeMonitorId])
+
+  const fetchMonitors = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/monitors`)
+      if (!res.ok) return
+      const data = await res.json()
+      setMonitorsList(data)
+      
+      // Auto-select first Live monitor if currently on simulation
+      if (activeMonitorId === 'simulation') {
+        const firstLive = data.find(m => m.id !== 'simulation' && m.id !== 'weather')
+        if (firstLive) {
+          setActiveMonitorId(firstLive.id)
+          console.log(`🔌 Auto-switched to Live Monitor: ${firstLive.name}`)
+        }
+      }
+    } catch (err) { console.error(err) }
+  }, [activeMonitorId])
 
   const fetchScenarios = useCallback(async () => {
     try {
@@ -393,7 +413,7 @@ export default function App() {
     setAnalysisLoading(true)
     setAnalysisError(null)
     try {
-      const res = await fetch(`${API_BASE}/api/analyze`)
+      const res = await fetch(`${API_BASE}/api/analyze?device_id=${activeMonitorId}`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       setAnalysis(await res.json())
       
@@ -404,7 +424,7 @@ export default function App() {
     } finally {
       setAnalysisLoading(false)
     }
-  }, [analysisCooldown])
+  }, [analysisCooldown, activeMonitorId])
 
   useEffect(() => {
     if (analysisCooldown > 0) {
@@ -415,21 +435,27 @@ export default function App() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    const urlDevId = params.get('device_id');
+    if (urlDevId) setActiveMonitorId(urlDevId);
+    
     if (params.get('scanner') === 'true') {
       setIsScannerOpen(true);
       window.history.replaceState({}, '', window.location.pathname);
     }
     fetchStatus()
     fetchScenarios()
+    fetchMonitors()
     const statusInterval = setInterval(fetchStatus, POLL_INTERVAL_MS)
+    const monitorInterval = setInterval(fetchMonitors, 5000)
     const scenarioInterval = setInterval(() => {
       if (scenarios.length === 0) fetchScenarios()
     }, 5000)
     return () => {
       clearInterval(statusInterval)
+      clearInterval(monitorInterval)
       clearInterval(scenarioInterval)
     }
-  }, [fetchStatus, fetchScenarios])
+  }, [fetchStatus, fetchScenarios, fetchMonitors])
 
   const reading = status?.reading ?? null
   const connected = status?.connected ?? false
@@ -453,7 +479,11 @@ export default function App() {
 
   const resetPairing = async () => {
     try {
-      await fetch(`${API_BASE}/api/pairing/reset`, { method: 'POST' })
+      await fetch(`${API_BASE}/api/pairing/reset`, { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ device_id: activeMonitorId }), 
+      })
       setAnalysis({ summary: '', flags: [] })
       fetchStatus()
     } catch(err) {}
@@ -485,9 +515,14 @@ export default function App() {
 
   // If accessed via #scan hash (mobile phone from QR code), show only the scanner
   if (window.location.hash === '#scan') {
+    const params = new URLSearchParams(window.location.search);
+    const mobileDevId = params.get('device_id') || 'simulation';
     return (
       <div className="h-screen w-full bg-[#09090b]">
-        <RoomScanner onClose={() => { window.location.hash = ''; window.location.reload(); }} />
+        <RoomScanner 
+          deviceId={mobileDevId}
+          onClose={() => { window.location.hash = ''; window.location.reload(); }} 
+        />
       </div>
     )
   }
@@ -530,13 +565,26 @@ export default function App() {
           </div>
 
           <select
-            value={manualScenarioId || 'live'}
+            value={activeMonitorId}
+            onChange={e => setActiveMonitorId(e.target.value)}
+            className="bg-zinc-900 border border-zinc-700 text-zinc-200 text-xs font-mono uppercase tracking-widest rounded px-3 py-1.5 outline-none cursor-pointer focus:border-emerald-500 focus:bg-zinc-800"
+          >
+            {monitorsList.map(m => (
+              <option key={m.id} value={m.id} className="bg-zinc-900 text-zinc-200">
+                {m.connected ? '●' : '○'} {m.name}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={manualScenarioId || (activeMonitorId === 'simulation' ? 'simulation' : 'live')}
             onChange={e => selectScenario(e.target.value)}
             className="hidden md:block bg-zinc-900 border border-zinc-700 text-zinc-200 text-xs font-mono uppercase tracking-widest rounded px-3 py-1.5 outline-none cursor-pointer focus:border-zinc-500 focus:bg-zinc-800"
           >
-            <option value="live" className="bg-zinc-900 text-zinc-200">Live Feed</option>
-            <option value="weather" className="bg-zinc-900 text-zinc-200">Local Weather</option>
-            {scenarios.map(s => <option key={s.id} value={s.id} className="bg-zinc-900 text-zinc-200">{s.name}</option>)}
+            <option value="live" className="bg-zinc-900 text-zinc-200">Mode: Hardware</option>
+            <option value="simulation" className="bg-zinc-900 text-zinc-200">Mode: Simulation</option>
+            <option value="weather" className="bg-zinc-900 text-zinc-200">Mode: Weather</option>
+            {scenarios.map(s => <option key={s.id} value={s.id} className="bg-zinc-900 text-zinc-200">Preset: {s.name}</option>)}
           </select>
 
           <div className="flex items-center border-l border-zinc-800/80 h-full pl-4 gap-4">
@@ -822,8 +870,8 @@ export default function App() {
         </div>
       )}
 
-      {isScannerOpen && <RoomScanner onClose={() => setIsScannerOpen(false)} />}
-      {isPairingOpen && <MobilePairing onClose={() => setIsPairingOpen(false)} />}
+      {isScannerOpen && <RoomScanner deviceId={activeMonitorId} onClose={() => setIsScannerOpen(false)} />}
+      {isPairingOpen && <MobilePairing deviceId={activeMonitorId} onClose={() => setIsPairingOpen(false)} />}
     </div>
   )
 }

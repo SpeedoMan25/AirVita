@@ -20,15 +20,11 @@ from app.scoring import calculate_room_health_score
 
 logger = logging.getLogger("airvita.serial")
 
-# ──────────────────────────────────────────────
-# Shared application state (latest reading)
-# ──────────────────────────────────────────────
-_current_status = RoomStatus()
+# No longer using local _current_status, mapping directly to main monitors
+DEVID = "Wired-Pico"
 
 
-def get_current_status() -> RoomStatus:
-    """Return the latest room status (thread-safe read of the shared state)."""
-    return _current_status
+# get_current_status no longer needed as main.py handles registry
 
 
 # ──────────────────────────────────────────────
@@ -72,6 +68,7 @@ def _generate_mock_reading() -> str:
             del payload["pm25_ugm3"]
 
     payload["timestamp_ms"] = int(time.time() * 1000)
+    payload["device_id"] = DEVID
     return json.dumps(payload)
 
 
@@ -80,19 +77,11 @@ def _generate_mock_reading() -> str:
 # ──────────────────────────────────────────────
 
 async def _process_line(line: str) -> None:
-    """Parse a JSON line from serial and update shared state."""
-    global _current_status
+    """Parse a JSON line from serial and update shared state in main registry."""
+    from app.main import update_status_from_dict
     try:
         data = json.loads(line)
-        reading = SensorReading(**data)
-        score = calculate_room_health_score(data)
-        _current_status = RoomStatus(
-            reading=reading,
-            score=score,
-            last_updated=datetime.now(timezone.utc),
-            connected=True,
-        )
-        logger.debug(f"Score: {score} | Temp: {reading.temperature_c}°C")
+        update_status_from_dict(data, device_id=DEVID)
     except (json.JSONDecodeError, Exception) as e:
         logger.warning(f"Failed to parse serial data: {e} | raw: {line!r}")
 
@@ -140,6 +129,9 @@ async def run_serial_listener() -> None:
                     line = raw.decode("utf-8", errors="replace").strip()
                     if line:
                         await _process_line(line)
+                else:
+                    # Optional: mark disconnected if no data for a while
+                    pass
 
             except serial.SerialException as e:
                 logger.error(f"Serial error: {e}. Retrying in 3s...")
