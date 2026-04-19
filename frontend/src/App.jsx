@@ -3,11 +3,17 @@ import {
   Activity, Thermometer, Droplets, Sun, Volume2, Gauge, Wind,
   Heart, Moon, Book, Briefcase, Sparkles, Settings2, Info, X,
   RefreshCw, AlertCircle, LayoutDashboard, BrainCircuit, Zap,
-  CheckCircle2, ChevronRight
+  CheckCircle2, ChevronRight, Camera
 } from 'lucide-react'
 import { AreaChart, Area, ResponsiveContainer, YAxis, XAxis, Tooltip } from 'recharts'
 
-const API_BASE = import.meta.env.VITE_API_URL || ''
+import RoomScanner from './components/RoomScanner'
+import MobilePairing from './components/MobilePairing'
+
+
+const API_BASE = import.meta.env.DEV
+  ? `http://${window.location.hostname}:8000`
+  : import.meta.env.VITE_API_URL || '';
 const POLL_INTERVAL_MS = 2000
 
 /* ═══════════════════════════════════════════════════
@@ -415,6 +421,9 @@ export default function App() {
   const [isTechOpen, setIsTechOpen] = useState(false)
   const [unitSystem, setUnitSystem] = useState('imperial')
   const [selectedActivity, setSelectedActivity] = useState('health')
+  const [isScannerOpen, setIsScannerOpen] = useState(false)
+  const [isPairingOpen, setIsPairingOpen] = useState(false)
+
 
   /* ── Data Fetching ── */
 
@@ -508,8 +517,8 @@ export default function App() {
           padding: '0 24px', height: '64px',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         }}>
-          {/* Left: Logo + Unit Toggle */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
+          {/* Left: Logo + Unit Toggle + Scan */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <div style={{
                 background: '#4f46e5', padding: '8px', borderRadius: '12px',
@@ -544,6 +553,30 @@ export default function App() {
                 </button>
               ))}
             </div>
+
+            {/* Scan Room Button */}
+            <button
+              type="button"
+              onClick={() => {
+                const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+                if (isMobile) {
+                  setIsScannerOpen(true);
+                } else {
+                  setIsPairingOpen(true);
+                }
+              }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '8px',
+                padding: '8px 16px', borderRadius: '12px', border: '1px solid #e2e8f0',
+                background: (isScannerOpen || isPairingOpen) ? '#f8fafc' : '#fff',
+                color: (isScannerOpen || isPairingOpen) ? '#4f46e5' : '#64748b',
+                fontSize: '12px', fontWeight: 700, cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <Camera size={16} />
+              <span style={{ whiteSpace: 'nowrap' }}>Scan Room</span>
+            </button>
           </div>
 
           {/* Right: Source Selector + Settings */}
@@ -1044,9 +1077,9 @@ export default function App() {
                   </div>
                 )
               })()}
-            </div>
-          </div>
-        </div>
+            </div> {/* End Right Column */}
+          </div> {/* End rp-grid */}
+        </div> {/* End Outer grid */}
       </main>
 
       {/* Modal removed — info now updates the sidebar reference panel */}
@@ -1222,19 +1255,17 @@ export default function App() {
         </div>
       )}
 
-      {/* ──────────── FOOTER ──────────── */}
-      <footer style={{
-        padding: '48px 0', display: 'flex', flexDirection: 'column',
-        alignItems: 'center', gap: '8px', opacity: 0.3,
-      }}>
-        <div style={{ width: '4px', height: '4px', background: '#94a3b8', borderRadius: '50%' }} />
-        <p style={{
-          fontSize: '10px', fontWeight: 800, textTransform: 'uppercase',
-          letterSpacing: '0.3em', color: '#64748b', margin: 0,
-        }}>
-          RoomPulse Neural Engine
-        </p>
-      </footer>
+      {/* Room Classification Scanner */}
+      {isScannerOpen && (
+        <RoomScanner onClose={() => setIsScannerOpen(false)} />
+      )}
+
+      {/* Mobile QR Pairing */}
+      {isPairingOpen && (
+        <MobilePairing onClose={() => setIsPairingOpen(false)} />
+      )}
+
     </div>
   )
 }
+
