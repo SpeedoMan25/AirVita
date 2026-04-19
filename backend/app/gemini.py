@@ -41,7 +41,7 @@ Keep flags concise (under 12 words each).
 """.strip()
 
 
-def generate_analysis(reading: dict, scores: dict) -> dict:
+def generate_analysis(reading: dict, scores: dict, room_ctx: dict) -> dict:
     """
     Call Gemini 2.0 Flash with current sensor readings and return
     a dict with keys: summary (str), flags (list[str]).
@@ -49,6 +49,7 @@ def generate_analysis(reading: dict, scores: dict) -> dict:
     Falls back to a safe default on any error.
     """
     api_key = os.getenv("GEMINI_API_KEY", "")
+
     if not api_key:
         logger.warning("GEMINI_API_KEY not set — skipping analysis")
         return _fallback("Gemini API key is not configured.")
@@ -57,8 +58,12 @@ def generate_analysis(reading: dict, scores: dict) -> dict:
         from google import genai  # lazily imported so missing dep doesn't crash app startup
 
         client = genai.Client(api_key=api_key)
-
+        
+        objects_str = ", ".join(room_ctx.get('identified_objects', [])) if room_ctx.get('identified_objects') else "None detected"
+        
         sensor_lines = "\n".join([
+            f"- AI Visual Room Classification: {room_ctx.get('room_type', 'Unknown')}",
+            f"- AI Detected Objects: {objects_str}",
             f"- Temperature:  {reading.get('temperature_c', 'N/A')} °C",
             f"- Humidity:     {reading.get('humidity_pct', 'N/A')} %RH",
             f"- Light Level:  {reading.get('light_lux', 'N/A')} lux",
@@ -73,7 +78,7 @@ def generate_analysis(reading: dict, scores: dict) -> dict:
             f"- Fun/Social Conditions Score: {scores.get('fun', 'N/A')}/99",
         ])
 
-        prompt = f"{_RESEARCH_CONTEXT}\n\nCurrent Readings:\n{sensor_lines}"
+        prompt = f"{_RESEARCH_CONTEXT}\n\nCurrent Context & Readings:\n{sensor_lines}"
 
         response = client.models.generate_content(
             model="gemini-flash-latest",
