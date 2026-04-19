@@ -144,30 +144,22 @@ export default function App() {
 
           <div className="app__header-right">
             <button
-              className="app__scanner-toggle"
-              onClick={() => setIsPairingOpen(true)}
-              title="Pair Phone via QR Code"
-              style={{ padding: '8px 12px' }}
+              className={`app__scanner-toggle ${(isScannerOpen || isPairingOpen) ? 'app__scanner-toggle--active' : ''}`}
+              onClick={() => {
+                const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+                if (isMobile) {
+                  setIsScannerOpen(!isScannerOpen);
+                } else {
+                  setIsPairingOpen(true);
+                }
+              }}
+              title="Scan / Classify Room"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '18px', height: '18px' }}>
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                <rect x="7" y="7" width="3" height="3" />
-                <rect x="14" y="7" width="3" height="3" />
-                <rect x="7" y="14" width="3" height="3" />
-                <rect x="14" y="14" width="3" height="3" />
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9z" />
+                <polyline points="9 22 9 12 15 12 15 22" />
               </svg>
-            </button>
-
-            <button
-              className={`app__scanner-toggle ${isScannerOpen ? 'app__scanner-toggle--active' : ''}`}
-              onClick={() => setIsScannerOpen(!isScannerOpen)}
-              title="Open Scanner Camera"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '18px', height: '18px' }}>
-                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                <circle cx="12" cy="13" r="4" />
-              </svg>
-              <span>Scan</span>
+              <span>Scan Room</span>
             </button>
 
             <div className="app__unit-toggle">
