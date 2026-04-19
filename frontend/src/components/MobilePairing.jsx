@@ -17,7 +17,7 @@ export default function MobilePairing({ onClose }) {
     } else {
       setInfo({
         ip: host,
-        url: `https://${host}${port}`
+        url: `https://${host}${port}/?scanner=true`
       });
     }
   }, []);

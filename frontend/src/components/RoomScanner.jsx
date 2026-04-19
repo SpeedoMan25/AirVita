@@ -9,6 +9,7 @@ export default function RoomScanner({ onClose }) {
   const [result, setResult] = useState({ room: 'Initializing...', confidence: 0 });
   const [error, setError] = useState(null);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [isLocked, setIsLocked] = useState(false);
 
   useEffect(() => {
     let stream = null;
@@ -39,7 +40,7 @@ export default function RoomScanner({ onClose }) {
   }, []);
 
   useEffect(() => {
-    if (!isStreaming) return;
+    if (!isStreaming || isLocked) return;
 
     const interval = setInterval(async () => {
       if (!videoRef.current || !canvasRef.current) return;
@@ -62,6 +63,11 @@ export default function RoomScanner({ onClose }) {
         if (res.ok) {
           const data = await res.json();
           setResult(data);
+          
+          // Auto-lock if consensus is extremely high (>90%)
+          if (data.confidence > 0.9) {
+            setIsLocked(true);
+          }
         }
       } catch (err) {
         console.error("Frame upload failed:", err);
@@ -69,7 +75,7 @@ export default function RoomScanner({ onClose }) {
     }, 500); // 2 FPS is plenty and saves bandwidth
 
     return () => clearInterval(interval);
-  }, [isStreaming]);
+  }, [isStreaming, isLocked]);
 
   return (
     <div className="room-scanner">
@@ -103,11 +109,80 @@ export default function RoomScanner({ onClose }) {
                 <div className="room-scanner__progress-track">
                   <div 
                     className="room-scanner__progress-fill" 
-                    style={{ width: `${(result.confidence || 0) * 100}%` }}
+                    style={{ 
+                      width: `${(result.confidence || 0) * 100}%`,
+                      backgroundColor: isLocked ? '#10b981' : (result.confidence > 0.6 ? '#10b981' : '#4f46e5') 
+                    }}
                   />
                 </div>
-                <span>{Math.round((result.confidence || 0) * 100)}% Match</span>
+                <span style={{ color: (isLocked || result.confidence > 0.6) ? '#10b981' : 'inherit', fontWeight: (isLocked || result.confidence > 0.6) ? 700 : 'normal' }}>
+                  {isLocked ? '✔ Mapping Confirmed' : (result.confidence > 0.6 ? '✔ Locked & Synced' : `${Math.round((result.confidence || 0) * 100)}% Match`)}
+                </span>
               </div>
+
+              {result.confidence > 0.5 && !isLocked && (
+                <button 
+                  className="room-scanner__confirm-btn"
+                  onClick={async () => {
+                    const canvas = canvasRef.current;
+                    const video = videoRef.current;
+                    if (!canvas || !video) return;
+                    
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    const base64Image = canvas.toDataURL('image/jpeg', 0.5);
+
+                    try {
+                      await fetch(`${API_BASE}/api/scan-room`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ image: base64Image, force_lock: true })
+                      });
+                      setIsLocked(true);
+                    } catch (err) {
+                      console.error("Locking failed:", err);
+                    }
+                  }}
+                  style={{
+                    marginTop: '16px',
+                    width: '100%',
+                    padding: '12px',
+                    borderRadius: '12px',
+                    background: '#4f46e5',
+                    color: '#fff',
+                    border: 'none',
+                    fontWeight: 700,
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(79,70,229,0.2)'
+                  }}
+                >
+                  Confirm Room Mapping
+                </button>
+              )}
+              
+              {isLocked && (
+                <div style={{ marginTop: '16px', textAlign: 'center' }}>
+                    <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '12px' }}>
+                        Environment synced to dashboard. You can now close this and use the Neural Insights.
+                    </p>
+                    <button 
+                        onClick={onClose}
+                        style={{
+                            padding: '10px 20px',
+                            borderRadius: '10px',
+                            border: '1px solid #e2e8f0',
+                            background: '#fff',
+                            color: '#1e293b',
+                            fontSize: '14px',
+                            fontWeight: 700,
+                            cursor: 'pointer'
+                        }}
+                    >
+                        Return to Dashboard
+                    </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

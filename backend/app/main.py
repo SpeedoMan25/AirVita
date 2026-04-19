@@ -346,6 +346,12 @@ async def analyze_room():
     """
     if not latest_status.reading:
         return {"summary": "Waiting for sensor data...", "flags": []}
+        
+    if not latest_status.room_context:
+        return {
+            "summary": "LOCKED: Please use the Room Scanner to capture environmental context before accessing Neural AI insights.",
+            "flags": ["Missing Visual Context"]
+        }
     
     # Format the reading for Gemini
     reading_dict = latest_status.reading.model_dump()
@@ -356,7 +362,8 @@ async def analyze_room():
         "work": latest_status.work_score,
         "fun": latest_status.fun_score
     }
-    analysis = generate_analysis(reading_dict, scores)
+    room_ctx = latest_status.room_context.model_dump()
+    analysis = generate_analysis(reading_dict, scores, room_ctx)
     return analysis
 
 @app.post("/api/sensor-data")
@@ -427,4 +434,12 @@ async def scan_room(payload: dict):
     result = classifier.predict(payload["image"])
     if "error" in result:
         raise HTTPException(status_code=500, detail=result["error"])
+        
+    if result.get("confidence", 0) > 0.60 or payload.get("force_lock"):
+        from app.models import RoomContext
+        latest_status.room_context = RoomContext(
+            room_type=result.get("room", "Unknown"),
+            identified_objects=result.get("objects", [])
+        )
+        
     return result

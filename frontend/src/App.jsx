@@ -492,6 +492,12 @@ export default function App() {
   }, [])
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('scanner') === 'true') {
+      setIsScannerOpen(true);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+    
     fetchStatus()
     fetchScenarios()
     const interval = setInterval(fetchStatus, POLL_INTERVAL_MS)
@@ -773,11 +779,11 @@ export default function App() {
                   <button
                     type="button"
                     onClick={fetchAnalysis}
-                    disabled={analysisLoading}
+                    disabled={analysisLoading || !status?.room_context}
                     style={{
                       padding: '8px', borderRadius: '10px', border: 'none', cursor: 'pointer',
                       background: 'transparent', color: '#94a3b8',
-                      opacity: analysisLoading ? 0.5 : 1,
+                      opacity: (analysisLoading || !status?.room_context) ? 0.3 : 1,
                     }}
                   >
                     <RefreshCw size={18} className={analysisLoading ? 'animate-spin' : ''} />
@@ -786,7 +792,39 @@ export default function App() {
 
                 {/* Analysis content */}
                 <div style={{ minHeight: '200px' }}>
-                  {analysisLoading ? (
+                  {!status?.room_context ? (
+                    <div style={{
+                      display: 'flex', flexDirection: 'column', alignItems: 'center',
+                      justifyContent: 'center', textAlign: 'center', padding: '32px 16px',
+                    }}>
+                      <div style={{
+                        width: '64px', height: '64px', borderRadius: '50%',
+                        background: '#f8fafc', display: 'flex', alignItems: 'center',
+                        justifyContent: 'center', marginBottom: '16px', color: '#94a3b8',
+                      }}>
+                        <Camera size={32} />
+                      </div>
+                      <h4 style={{ fontSize: '14px', fontWeight: 700, color: '#1e293b', margin: '0 0 4px 0' }}>
+                        Scanner Context Required
+                      </h4>
+                      <p style={{ fontSize: '12px', color: '#64748b', maxWidth: '240px', margin: '0 0 20px 0', lineHeight: 1.5 }}>
+                        The AI engine requires visual context. Please scan the room to unlock predictive analysis.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setIsPairingOpen(true)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: '8px',
+                          background: '#fff', color: '#1e293b',
+                          padding: '10px 20px', borderRadius: '14px', border: '1px solid #e2e8f0',
+                          fontSize: '12px', fontWeight: 700, cursor: 'pointer',
+                          boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                        }}
+                      >
+                        <Camera size={16} /> Open Scanner Link
+                      </button>
+                    </div>
+                  ) : analysisLoading ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                       {[100, 90, 75].map((w, i) => (
                         <div key={i} style={{
