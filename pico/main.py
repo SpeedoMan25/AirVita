@@ -94,8 +94,11 @@ def dim_red():
 def parse_pms_data(data):
     if len(data) < 32: return None
     if data[0] != 0x42 or data[1] != 0x4D: return None
-    pm25 = (data[12] << 8) | data[13]
-    return pm25
+    # Atmospheric environment readings (ug/m3)
+    pm1_0 = (data[10] << 8) | data[11]
+    pm2_5 = (data[12] << 8) | data[13]
+    pm10  = (data[14] << 8) | data[15]
+    return pm1_0, pm2_5, pm10
 
 def get_audio_metrics(baseline):
     bytes_read = mic.readinto(read_buf)
@@ -151,7 +154,7 @@ def setup():
 def main():
     lcd, env, light = setup()
     baseline = 0
-    pm25 = 0
+    pm1_0, pm2_5, pm10 = 0, 0, 0
     last_env_update = 0
     neo_offset = 0
     
@@ -178,11 +181,12 @@ def main():
                 if pms_uart.any() >= 32:
                     raw_pms = pms_uart.read(32)
                     parsed_pm = parse_pms_data(raw_pms)
-                    if parsed_pm is not None: pm25 = parsed_pm
+                    if parsed_pm is not None:
+                        pm1_0, pm2_5, pm10 = parsed_pm
                 
                 # Update LCD
                 if lcd:
-                    lcd.message(f"T:{t:2.0f} H:{h:2.0f} PM:{pm25:2.0f}", f"L:{lux:4.0f} N:{noise_db:2.0f}dB")
+                    lcd.message(f"T:{t:2.0f} H:{h:2.0f} PM:{pm2_5:2.0f}", f"L:{lux:4.0f} N:{noise_db:2.0f}dB")
                 
                 last_env_update = now
 
@@ -201,7 +205,10 @@ def main():
                 "pressure": p,
                 "light": lux,
                 "sound_amp": noise_db,
-                "particulates": pm25,
+                "pm1_0": pm1_0,
+                "pm2_5": pm2_5,
+                "pm10": pm10,
+                "particulates": pm2_5,
                 "vocs": g / 1000.0 if g else 0,
                 "timestamp_ms": time.ticks_ms()
             }

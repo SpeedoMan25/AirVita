@@ -47,6 +47,13 @@ def bridge_loop(port_name):
                 # Parse Pico JSON
                 if "{" in line and "}" in line:
                     data = json.loads(line)
+                    
+                    # Highlight individual particulate levels
+                    p1 = data.get("pm1_0")
+                    p2 = data.get("pm2_5")
+                    p10 = data.get("pm10")
+                    if p1 is not None and p2 is not None and p10 is not None:
+                        print(f"🌬️  PM Levels — PM1.0: {p1} | PM2.5: {p2} | PM10: {p10} ug/m3")
                 
                 # Map to Backend Schema (Pico v2 uses short names)
                 payload = {
@@ -56,7 +63,7 @@ def bridge_loop(port_name):
                     "pressure": data.get("pressure"),
                     "temperature": data.get("temperature"),
                     "sound_amp": data.get("sound_amp"),
-                    "particulates": data.get("particulates"),
+                    "particulates": data.get("pm2_5", data.get("particulates", 0)),
                     "vocs": data.get("vocs"),
                     "timestamp_ms": int(time.time() * 1000)
                 }
