@@ -20,12 +20,14 @@ logger = logging.getLogger("airvita.gemini")
 _RESEARCH_CONTEXT = """
 You are an indoor air quality and environmental health expert.
 Analyze the following room sensor readings and provide a brief, friendly health summary
-based on the scientific research standards listed below.
+based on the scientific research standards listed below. 
 
 Reference standards:
 - Temperature: ASHRAE Standard 55 — thermal comfort 20–24°C (68–75°F)
 - Humidity: EPA — ideal 40–60% RH; below 30% causes dryness/static, above 60% promotes mold
 - PM2.5: WHO 2021 guideline — annual mean < 5 µg/m³, 24-h mean < 15 µg/m³; > 35 µg/m³ is unhealthy
+
+Give the user recomendations based of the data.
 
 - Noise: WHO Environmental Noise Guidelines — < 35 dB for sleep, < 55 dB for daytime activity
 - Light: IESNA — 300–500 lux for general office work; < 5 Lux for sleep
