@@ -365,10 +365,23 @@ function SensorCard({ sensorKey, value, history = [], onInfoClick, unitSystem })
     ? 0
     : Math.max(0, Math.min(100, ((value - meta.min) / (meta.max - meta.min)) * 100))
 
+  const range = !isLoading && meta.ranges.find(r => {
+    if (r.min !== undefined && r.max !== undefined) return value >= r.min && value <= r.max
+    if (r.min !== undefined) return value >= r.min
+    if (r.max !== undefined) return value <= r.max
+    return false
+  })
+  const barColor = range ? range.color : 'var(--card-accent)'
+
   return (
     <div
       className={`env-card ${isLoading ? 'env-card--loading' : ''}`}
-      style={{ '--card-bg': meta.palette.bg, '--card-accent': meta.palette.accent, '--card-icon-bg': meta.palette.iconBg }}
+      style={{ 
+        '--card-bg': meta.palette.bg, 
+        '--card-accent': meta.palette.accent, 
+        '--card-icon-bg': meta.palette.iconBg,
+        '--bar-color': barColor
+      }}
       id={`sensor-${sensorKey}`}
     >
       <button 
@@ -428,10 +441,13 @@ function SensorCard({ sensorKey, value, history = [], onInfoClick, unitSystem })
    ───────────────────────────────────────── */
 
 export default function SensorGrid({ reading, history, onInfoClick, unitSystem }) {
-  const keys = Object.keys(SENSOR_META)
+  const SENSOR_KEYS = [
+    'temperature_c', 'humidity_pct', 'light_lux', 
+    'noise_db', 'pressure_hpa', 'pm25_ugm3', 'voc_ppb'
+  ]
   return (
     <div className="env-grid">
-      {keys.map(key => (
+      {SENSOR_KEYS.map(key => (
         <SensorCard 
           key={key} 
           sensorKey={key} 
