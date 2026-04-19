@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { AreaChart, Area, ResponsiveContainer, YAxis } from 'recharts'
 import './SensorCard.css'
 
 /* ─────────────────────────────────────────
@@ -350,7 +351,7 @@ export function SensorInfoDrawer({ meta, value, onClose, unitSystem }) {
    SensorCard
    ───────────────────────────────────────── */
 
-function SensorCard({ sensorKey, value, onInfoClick, unitSystem }) {
+function SensorCard({ sensorKey, value, history = [], onInfoClick, unitSystem }) {
   const meta = SENSOR_META[sensorKey]
   if (!meta) return null
 
@@ -392,6 +393,29 @@ function SensorCard({ sensorKey, value, onInfoClick, unitSystem }) {
         {!isLoading && <span className="env-card__unit">{unit}</span>}
       </div>
 
+      <div className="env-card__chart">
+        <ResponsiveContainer width="100%" height={40}>
+          <AreaChart data={history}>
+            <defs>
+              <linearGradient id={`gradient-${sensorKey}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="var(--card-accent)" stopOpacity={0.3}/>
+                <stop offset="95%" stopColor="var(--card-accent)" stopOpacity={0}/>
+              </linearGradient>
+            </defs>
+            <YAxis hide domain={['auto', 'auto']} />
+            <Area 
+              type="monotone" 
+              dataKey={sensorKey} 
+              stroke="var(--card-accent)" 
+              fillOpacity={1} 
+              fill={`url(#gradient-${sensorKey})`} 
+              strokeWidth={2}
+              isAnimationActive={false}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+
       <div className="env-card__bar">
         <div className="env-card__bar-fill" style={{ width: `${barPercent}%` }} />
       </div>
@@ -403,7 +427,7 @@ function SensorCard({ sensorKey, value, onInfoClick, unitSystem }) {
    SensorGrid
    ───────────────────────────────────────── */
 
-export default function SensorGrid({ reading, onInfoClick, unitSystem }) {
+export default function SensorGrid({ reading, history, onInfoClick, unitSystem }) {
   const keys = Object.keys(SENSOR_META)
   return (
     <div className="env-grid">
@@ -412,6 +436,7 @@ export default function SensorGrid({ reading, onInfoClick, unitSystem }) {
           key={key} 
           sensorKey={key} 
           value={reading ? reading[key] : null} 
+          history={history}
           onInfoClick={onInfoClick}
           unitSystem={unitSystem}
         />

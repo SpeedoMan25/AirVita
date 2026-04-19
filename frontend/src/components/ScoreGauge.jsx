@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react'
+import { AreaChart, Area, ResponsiveContainer, YAxis } from 'recharts'
 import { Icons } from './SensorCard'
 import './ScoreGauge.css'
 
@@ -55,7 +56,7 @@ const CONFIGS = {
   }
 };
 
-export default function ScoreGauge({ type = 'health', score = 0, isActive = false, onClick, onInfoClick }) {
+export default function ScoreGauge({ type = 'health', score = 0, history = [], isActive = false, onClick, onInfoClick }) {
   const config = CONFIGS[type] || CONFIGS.health;
   const word = useMemo(() => config.getWord(score), [score, config]);
 
@@ -114,6 +115,29 @@ export default function ScoreGauge({ type = 'health', score = 0, isActive = fals
           </span>
           <span className="score-card__of">/99</span>
         </div>
+      </div>
+
+      <div className="score-card__chart">
+        <ResponsiveContainer width="100%" height={30}>
+          <AreaChart data={history}>
+            <defs>
+              <linearGradient id={`grad-spark-${type}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={config.gradient[config.gradient.length - 1]} stopOpacity={0.3}/>
+                <stop offset="95%" stopColor={config.gradient[config.gradient.length - 1]} stopOpacity={0}/>
+              </linearGradient>
+            </defs>
+            <YAxis hide domain={[0, 100]} />
+            <Area 
+              type="monotone" 
+              dataKey={type} 
+              stroke={config.gradient[config.gradient.length - 1]} 
+              fillOpacity={1} 
+              fill={`url(#grad-spark-${type})`} 
+              strokeWidth={2}
+              isAnimationActive={false}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
       </div>
 
       <div className="score-card__bottom">

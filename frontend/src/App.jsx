@@ -13,6 +13,7 @@ export default function App() {
   const [status, setStatus] = useState(null)
   const [error, setError] = useState(null)
   const [lastFetch, setLastFetch] = useState(null)
+  const [history, setHistory] = useState([])
 
   // Simulation/Scenarios state (from model branch)
   const [scenarios, setScenarios] = useState([])
@@ -45,6 +46,25 @@ export default function App() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
       setStatus(data)
+      
+      // Update historical trend buffer
+      if (data.reading) {
+        setHistory(prev => {
+          const newEntry = { 
+            ...data.reading, 
+            timestamp: data.reading.timestamp_ms || Date.now(),
+            // Also store scores for the health cards
+            health: data.score,
+            sleep: data.sleep_score,
+            study: data.study_score,
+            work: data.work_score,
+            fun: data.fun_score
+          }
+          const newHistory = [...prev, newEntry]
+          return newHistory.slice(-30) // Keep last 30 points (~1 min at 2s poll)
+        })
+      }
+
       setError(null)
       setLastFetch(new Date())
     } catch (err) {
@@ -194,6 +214,7 @@ export default function App() {
               <ScoreGauge 
                 type="health" 
                 score={status?.score} 
+                history={history}
                 isActive={selectedActivity === 'health'}
                 onClick={() => setSelectedActivity('health')}
                 onInfoClick={toggleSensorInfo}
@@ -201,6 +222,7 @@ export default function App() {
               <ScoreGauge 
                 type="sleep" 
                 score={status?.sleep_score} 
+                history={history}
                 isActive={selectedActivity === 'sleep'}
                 onClick={() => setSelectedActivity('sleep')}
                 onInfoClick={toggleSensorInfo}
@@ -208,6 +230,7 @@ export default function App() {
               <ScoreGauge 
                 type="study" 
                 score={status?.study_score} 
+                history={history}
                 isActive={selectedActivity === 'study'}
                 onClick={() => setSelectedActivity('study')}
                 onInfoClick={toggleSensorInfo}
@@ -215,6 +238,7 @@ export default function App() {
               <ScoreGauge 
                 type="work" 
                 score={status?.work_score} 
+                history={history}
                 isActive={selectedActivity === 'work'}
                 onClick={() => setSelectedActivity('work')}
                 onInfoClick={toggleSensorInfo}
@@ -222,6 +246,7 @@ export default function App() {
               <ScoreGauge 
                 type="fun" 
                 score={status?.fun_score} 
+                history={history}
                 isActive={selectedActivity === 'fun'}
                 onClick={() => setSelectedActivity('fun')}
                 onInfoClick={toggleSensorInfo}
@@ -241,6 +266,7 @@ export default function App() {
             <h2 className="app__section-label">Real-Time Sensors</h2>
             <SensorGrid 
               reading={reading} 
+              history={history}
               onInfoClick={toggleSensorInfo}
               unitSystem={unitSystem}
             />
