@@ -1,9 +1,9 @@
-# Raspberry Pi Pico Hardware Testing Guide
+# Raspberry Pi Pico Hardware Testing (V1)
 
 This directory contains standalone and integrated tester scripts for the hardware modules connected to your Raspberry Pi Pico.
 
 > [!IMPORTANT]
-> **Main Testing File:** The [Integrated Smart Home System](file:///c:/Projects/HackAugie/pico/test/integrated_system/smart_light.py) is the primary script used to verify all hardware components simultaneously.
+> **Main Testing File:** The [Integrated Smart Home System](file:///c:/Projects/HackAugie/pico/test/v1/integrated_system/smart_light.py) is the primary script used to verify all hardware components simultaneously.
 
 ---
 
@@ -45,10 +45,10 @@ Ensure you have `mpremote` installed (`pip install mpremote`) and your Pico is c
 This combines the LDR, Thermistor, LCD, and NeoPixel strip into a single interactive system.
 ```bash
 # 1. Upload the LCD Library
-python -m mpremote connect COM4 cp pico/test/lcd/pico_i2c_lcd.py :pico_i2c_lcd.py
+python -m mpremote connect COM4 cp pico/test/v1/lcd/pico_i2c_lcd.py :pico_i2c_lcd.py
 
 # 2. Run the Master System
-python -m mpremote connect COM4 run pico/test/integrated_system/smart_light.py
+python -m mpremote connect COM4 run pico/test/v1/integrated_system/smart_light.py
 ```
 
 ### 1. Modular Tests
@@ -56,20 +56,20 @@ Use these to isolate issues with specific components.
 
 | Module | Command |
 | :--- | :--- |
-| **Blink** | `python -m mpremote connect COM4 run pico/test/blink/blink.py` |
-| **NeoPixel** | `python -m mpremote connect COM4 run pico/test/neopixel/neopixel_test.py` |
-| **I2C Scanner** | `python -m mpremote connect COM4 run pico/test/lcd/i2c_scanner.py` |
-| **IR Sensor** | `python -m mpremote connect COM4 run pico/test/ir_sensor/ir_test.py` |
-| **Motion (PIR)** | `python -m mpremote connect COM4 run pico/test/motion_sensor/pir_test.py` |
-| **Light (LDR)** | `python -m mpremote connect COM4 run pico/test/light_sensor/ldr_test.py` |
-| **Temp (Therm)**| `python -m mpremote connect COM4 run pico/test/temp_sensor/thermistor_test.py` |
+| **Blink** | `python -m mpremote connect COM4 run pico/test/v1/blink/blink.py` |
+| **NeoPixel** | `python -m mpremote connect COM4 run pico/test/v1/neopixel/neopixel_test.py` |
+| **I2C Scanner** | `python -m mpremote connect COM4 run pico/test/v1/lcd/i2c_scanner.py` |
+| **IR Sensor** | `python -m mpremote connect COM4 run pico/test/v1/ir_sensor/ir_test.py` |
+| **Motion (PIR)** | `python -m mpremote connect COM4 run pico/test/v1/motion_sensor/pir_test.py` |
+| **Light (LDR)** | `python -m mpremote connect COM4 run pico/test/v1/light_sensor/ldr_test.py` |
+| **Temp (Therm)**| `python -m mpremote connect COM4 run pico/test/v1/temp_sensor/thermistor_test.py` |
 
 ---
 
 ## Project Structure
 
 - **`pico/main.py`**: The "Edge Code" designed to run automatically on boot. It formats sensor data into JSON strings for consumption by the backend system.
-- **`pico/test/`**: Individual test scripts (this directory) used for hardware validation and debugging.
+- **`pico/test/v1/`**: Individual test scripts (this directory) used for hardware validation and debugging.
 - **`pico/lib/`**: Reusable drivers (BME688, BH1750, etc.) used by the main edge code.
 
 ---
