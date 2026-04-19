@@ -1,114 +1,126 @@
-"""
-AirVita — Raspberry Pi 4B Edge Code (Python 3)
-Simplified Version: DHT11 Only on Grove Port D5 (GPIO 5)
-"""
-
-import json
-import time
-import sys
-import uuid
-import requests
-import socket
 import os
+import time
+import json
+import requests
+import uuid
+import sys
 
-# DHT11 Library (Most widely used standard)
+# Import custom drivers from lib/
+sys.path.append(os.path.join(os.path.dirname(__file__), 'lib'))
 try:
-    import adafruit_dht
-    import board
-except ImportError:
-    adafruit_dht = None
-    print("Error: 'adafruit-circuitpython-dht' and 'board' libraries not found.")
-    print("Install them with: pip3 install adafruit-circuitpython-dht")
+    from bme688 import BME688
+    from bh1750 import BH1750
+    from pms5003 import PMS5003
+    from mic_handler import MicrophoneHandler
+except ImportError as e:
+    print(f"❌ Driver Import Error: {e}")
+    print("Ensure all files are in pi4B/lib/")
 
-# Hardware Config
-# Seeed Studio Grove Base Hat D5 maps to GPIO 5
-DHT_PIN = board.D5 if 'board' in locals() else 5
-
-# Network Config
-# Strip accidental quotes (handles standard and 'smart' quotes from copy-paste)
+# --- Configuration ---
+# Allow setting backend via environment variable
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000").strip(' "\u201d\u201c')
 DEVICE_ID = os.getenv("DEVICE_ID", hex(uuid.getnode())) # MAC address based ID
+POLL_INTERVAL = 2  # Seconds
 
-print(f"📡 Device ID: {DEVICE_ID}")
-print(f"🔗 Target Backend: {BACKEND_URL}")
+def main():
+    print(f"📡 Device ID: {DEVICE_ID}")
+    print(f"🔗 Target Backend: {BACKEND_URL}")
+    print("Initializing AirVita Sensor Suite...")
 
-def setup():
-    print(f"Initializing AirVita (DHT11 Only) on GPIO {DHT_PIN}...")
-    
-    # 1. Network Connectivity Check
+    # Initialize Drivers
+    # BME688 (Environment)
+    try:
+        bme = BME688()
+        print("✅ BME688 Initialized (I2C 0x76)")
+    except Exception as e:
+        bme = None
+        print(f"⚠️ BME688 not found: {e}")
+
+    # BH1750 (Light)
+    try:
+        light_sensor = BH1750()
+        light_sensor.init()
+        print("✅ BH1750 Initialized (I2C 0x23)")
+    except Exception as e:
+        light_sensor = None
+        print(f"⚠️ BH1750 not found: {e}")
+
+    # PMS5003 (Particulates)
+    try:
+        pms = PMS5003()
+        print("✅ PMS5003 Initialized (Serial)")
+    except Exception as e:
+        pms = None
+        print(f"⚠️ PMS5003 not found: {e}")
+
+    # Microphone (Noise)
+    try:
+        mic = MicrophoneHandler()
+        print("✅ Microphone Initialized (ALSA)")
+    except Exception as e:
+        mic = None
+        print(f"⚠️ Microphone not found: {e}")
+
+    # Check Connectivity
     try:
         print("🔍 Checking backend connectivity...")
-        test_res = requests.get(f"{BACKEND_URL}/api/monitors", timeout=3)
-        if test_res.status_code == 200:
-            print("✅ Successfully connected to AirVita backend!")
-        else:
-            print(f"⚠️ Backend reached but returned status: {test_res.status_code}")
+        requests.get(f"{BACKEND_URL}/api/monitors", timeout=3)
+        print("✅ Successfully connected to AirVita backend!")
     except Exception as e:
-        print(f"❌ Cannot reach backend at {BACKEND_URL}.")
-        print(f"   Error: {e}")
-        print(f"\n💡 Hint: If your backend is running on a Mac/PC, make sure to set the correct IP:")
-        print(f"   export BACKEND_URL=http://<YOUR_COMPUTER_IP>:8000")
+        print(f"❌ Cannot reach backend at {BACKEND_URL}.\n   Error: {e}")
+        print("\n💡 Hint: Check your BACKEND_URL and ensure the server is running.")
 
-    dht_sensor = None
-    if adafruit_dht:
-        try:
-            dht_sensor = adafruit_dht.DHT11(DHT_PIN)
-        except Exception as e:
-            print(f"DHT11 Initialization Error: {e}")
-    return dht_sensor
+    print("Monitoring started. Press Ctrl+C to stop.")
 
-def loop(dht_sensor):
-    print("Monitoring started. Outputting JSON to console...")
-    while True:
-        try:
-            # Read Humidity & Temp
-            temp_c = None
-            hum_pct = None
-            
-            if dht_sensor:
-                try:
-                    # Note: DHT sensors require a few tries sometimes
-                    temp_c = dht_sensor.temperature
-                    hum_pct = dht_sensor.humidity
-                except RuntimeError as e:
-                    # Reading DHT can be finicky on Linux, just retry
-                    print("⌛ Sensor reading failed, retrying...")
-                    pass
-            
-            # If we have a successful read, output JSON and send to backend
-            if temp_c is not None and hum_pct is not None:
-                payload = {
-                    "device_id": DEVICE_ID,
-                    "temperature": float(temp_c),
-                    "humidity": float(hum_pct),
-                    "pressure": 1013.25, # Constants to satisfy backend model
-                    "light": 400.0,
-                    "timestamp_ms": int(time.time() * 1000)
-                }
-                
-                # 1. Console Output
-                print(f"📤 Sending: {json.dumps(payload)}")
-                sys.stdout.flush()
-
-                # 2. Network Upload
-                try:
-                    res = requests.post(f"{BACKEND_URL}/api/sensor-data", json=payload, timeout=2)
-                    if res.status_code != 200:
-                        print(f"⚠️ Backend returned error: {res.status_code}")
-                except Exception as e:
-                    print(f"❌ Network error hitting {BACKEND_URL}/api/sensor-data: {e}")
-            
-        except Exception as e:
-            print(json.dumps({"error": str(e)}))
-            
-        # DHT11 requires at least 1-2 seconds between readings
-        time.sleep(2.0)
-
-if __name__ == "__main__":
     try:
-        sensor = setup()
-        loop(sensor)
+        while True:
+            # 1. Read BME688 (Environment)
+            env_data = bme.read_all() if bme else {}
+            if env_data is None: env_data = {}
+            
+            # 2. Read Light
+            lux = light_sensor.read() if light_sensor else 400.0
+            
+            # 3. Read Particulates
+            pm_data = pms.read() if pms else {"pm2_5": 5}
+            if pm_data is None: pm_data = {"pm2_5": 5}
+            
+            # 4. Read Noise
+            noise_db = mic.get_noise_level() if mic else 35.0
+
+            # 5. Build Payload
+            payload = {
+                "device_id": DEVICE_ID,
+                "temperature": env_data.get("temperature", 22.0),
+                "humidity": env_data.get("humidity", 40.0),
+                "pressure": env_data.get("pressure", 1013.25),
+                "vocs": env_data.get("gas_res", 50000),
+                "light": lux,
+                "sound_amp": noise_db,
+                "particulates": pm_data.get("pm2_5", 5.0),
+                "timestamp_ms": int(time.time() * 1000)
+            }
+
+            # 6. Output to console
+            print(f"📤 Sending: {json.dumps(payload)}")
+            sys.stdout.flush()
+
+            # 7. POST to Backend
+            try:
+                res = requests.post(f"{BACKEND_URL}/api/sensor-data", json=payload, timeout=2)
+                if res.status_code != 200:
+                    print(f"⚠️ Backend returned error: {res.status_code}")
+            except Exception as e:
+                print(f"❌ Network error: {e}")
+
+            time.sleep(POLL_INTERVAL)
+
     except KeyboardInterrupt:
         print("\nStopping...")
-        if 'sensor' in locals() and sensor:
-            sensor.exit()
+    finally:
+        if bme: bme.close()
+        if light_sensor: light_sensor.close()
+        if pms: pms.close()
+
+if __name__ == "__main__":
+    main()
