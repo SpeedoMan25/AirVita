@@ -8,13 +8,25 @@ import sys
 
 # Setup paths
 sys.path.append(os.path.join(os.path.dirname(__file__), 'lib'))
+
+DHT11Handler = None
+BH1750 = None
+MicrophoneHandler = None
+
 try:
     from dht11_handler import DHT11Handler
+except ImportError as e:
+    print(f"⚠️ DHT11 driver not available: {e}")
+
+try:
     from bh1750 import BH1750
+except ImportError as e:
+    print(f"⚠️ BH1750 driver not available: {e}")
+
+try:
     from mic_handler import MicrophoneHandler
 except ImportError as e:
-    print(f"❌ Driver Import Error: {e}")
-    print("Ensure all files are in pi4B/lib/")
+    print(f"⚠️ Mic driver not available: {e}")
 
 # --- Configuration ---
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000").strip(' "\u201d\u201c')
@@ -31,31 +43,41 @@ def main():
     print(f"🔗 Target Backend: {BACKEND_URL}")
     print("Initializing AirVita Sensor Suite (Pi4B)...")
 
+
     # Initialize Drivers
     # DHT11 (Temp/Hum)
-    try:
-        dht = DHT11Handler()
-        print("✅ DHT11 Initialized (Grove D5)")
-    except Exception as e:
-        dht = None
-        print(f"⚠️ DHT11 not found or failed to init: {e}")
+    dht = None
+    if DHT11Handler:
+        try:
+            dht = DHT11Handler()
+            print("✅ DHT11 Initialized (Grove D5)")
+        except Exception as e:
+            print(f"⚠️ DHT11 not found or failed to init: {e}")
+    else:
+        print("⚠️ DHT11 driver not loaded (missing dependency)")
 
     # BH1750 (Light)
-    try:
-        light_sensor = BH1750()
-        light_sensor.init()
-        print("✅ BH1750 Initialized (I2C 0x23)")
-    except Exception as e:
-        light_sensor = None
-        print(f"⚠️ BH1750 not found: {e}")
+    light_sensor = None
+    if BH1750:
+        try:
+            light_sensor = BH1750()
+            light_sensor.init()
+            print("✅ BH1750 Initialized (I2C 0x23)")
+        except Exception as e:
+            print(f"⚠️ BH1750 not found: {e}")
+    else:
+        print("⚠️ BH1750 driver not loaded (missing dependency)")
 
     # Microphone (Noise)
-    try:
-        mic = MicrophoneHandler()
-        print("✅ Microphone Initialized (I2S/ALSA)")
-    except Exception as e:
-        mic = None
-        print(f"⚠️ Microphone not found: {e}")
+    mic = None
+    if MicrophoneHandler:
+        try:
+            mic = MicrophoneHandler()
+            print("✅ Microphone Initialized (I2S/ALSA)")
+        except Exception as e:
+            print(f"⚠️ Microphone not found: {e}")
+    else:
+        print("⚠️ Mic driver not loaded (missing dependency)")
 
     # Check Connectivity
     backend_ok = False
