@@ -37,7 +37,6 @@ _mock_state = {
     "noise_db": 35.0,
     "pressure_hpa": 1013.0,
     "pm25_ugm3": 12.0,
-    "voc_ppb": 150.0,
 }
 
 _mock_bounds = {
@@ -47,7 +46,6 @@ _mock_bounds = {
     "noise_db": (20.0, 90.0, 2.0),
     "pressure_hpa": (980.0, 1040.0, 0.5),
     "pm25_ugm3": (0.0, 150.0, 3.0),
-    "voc_ppb": (0.0, 1500.0, 20.0),
 }
 
 
@@ -62,9 +60,7 @@ def _generate_mock_reading() -> str:
     # Simulation: Occasionally lose data on some sensors
     # Roughly every ~10s (5 intervals of 2s)
     if random.random() < 0.2:
-        if random.random() < 0.5:
-            del payload["voc_ppb"]
-        else:
+        if "pm25_ugm3" in payload:
             del payload["pm25_ugm3"]
 
     payload["timestamp_ms"] = int(time.time() * 1000)

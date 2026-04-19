@@ -19,7 +19,6 @@ from app.scoring import (
     calculate_work_score_with_breakdown,
     calculate_fun_score_with_breakdown
 )
-from app.weather import weather_service
 
 # Configuration
 MODEL_DIR = Path(__file__).parent.parent / "model"
@@ -35,9 +34,7 @@ monitors: Dict[str, RoomStatus] = {}
 AUTO_CYCLE = False 
 CURRENT_SCENARIO_INDEX = 0
 ACTIVE_SCENARIO_ID = "ideal" 
-CURRENT_SOURCE = "live" # 'live', 'simulation', or 'weather'
-LAST_WEATHER_DATA = None
-LAST_WEATHER_FETCH_TIME = 0
+CURRENT_SOURCE = "live" # 'live' or 'simulation'
 CURRENT_PAIRING_STATUS = "ready" # ready, connected, completed
 
 # Load Simulation Scenarios from JSON
@@ -55,7 +52,6 @@ except Exception as e:
 
 # Hybrid Scoring Constants
 COEFF_MLP_BASE = 1.0
-COEFF_VOC = -0.02
 COEFF_PARTICLES = -0.05
 BIAS = 0.0
 
@@ -69,11 +65,10 @@ class SensorDataPayload(BaseModel):
     sound_mid: float = 0.0
     sound_low: float = 0.0
     sound_amp: float = 0.0
-    vocs: float = Field(0.0, description="VOC level in ppb")
     particulates: float = Field(0.0, description="PM2.5 level in ug/m3")
 
-def calculate_final_iaq(base_score: float, vocs: float, particulates: float) -> int:
-    score = (base_score * COEFF_MLP_BASE) + (vocs * COEFF_VOC) + (particulates * COEFF_PARTICLES) + BIAS
+def calculate_final_iaq(base_score: float, particulates: float) -> int:
+    score = (base_score * COEFF_MLP_BASE) + (particulates * COEFF_PARTICLES) + BIAS
     return int(max(1, min(99, round(score))))
 
 def predict_score(data: dict) -> dict:
@@ -106,18 +101,15 @@ def predict_score(data: dict) -> dict:
     scaled = scaler.transform(df)
     base_score = float(model.predict(scaled)[0])
     
-    vocs = data.get("voc_ppb", data.get("vocs", 0))
     pm25 = data.get("pm25_ugm3", data.get("particulates", 0))
     
     # Calculate penalty components
-    voc_penalty = vocs * COEFF_VOC
     pm25_penalty = pm25 * COEFF_PARTICLES
     
-    final_score = calculate_final_iaq(base_score, vocs, pm25)
+    final_score = calculate_final_iaq(base_score, pm25)
     
     return {
         "base_score": base_score,
-        "voc_penalty": voc_penalty,
         "pm25_penalty": pm25_penalty,
         "final_score": final_score,
         "reading": {
@@ -127,7 +119,6 @@ def predict_score(data: dict) -> dict:
             "noise_db": features_raw[7],
             "pressure_hpa": features_raw[1],
             "pm25_ugm3": pm25,
-            "voc_ppb": vocs,
         }
     }
 
@@ -195,7 +186,7 @@ async def run_data_generator():
     """
     Background job that generates data based on CURRENT_SOURCE.
     """
-    global AUTO_CYCLE, CURRENT_SOURCE, LAST_WEATHER_DATA, LAST_WEATHER_FETCH_TIME
+    global AUTO_CYCLE, CURRENT_SOURCE
     import random
     
     print("🛰️ Data Generator Task Started.")
@@ -203,15 +194,6 @@ async def run_data_generator():
     
     while True:
         now = datetime.now(timezone.utc).timestamp()
-        
-        # Periodically refresh weather data (every 5 minutes)
-        if now - LAST_WEATHER_FETCH_TIME > 300:
-            try:
-                LAST_WEATHER_DATA = await weather_service.fetch_weather()
-                LAST_WEATHER_FETCH_TIME = now
-                print(f"🌍 Weather Updated: {LAST_WEATHER_DATA.get('location', 'Unknown')}")
-            except Exception as e:
-                print(f"Weather update error: {e}")
 
         if CURRENT_SOURCE == "simulation":
             if AUTO_CYCLE and (now - last_cycle_time > 8):
@@ -232,23 +214,9 @@ async def run_data_generator():
                     "light": jitter(s["inputs"]["light"]), 
                     "temperature": jitter(s["inputs"]["temperature"]),
                     "sound_amp": jitter(s["inputs"]["noise"]),
-                    "vocs": jitter(s["inputs"]["vocs"]), 
                     "particulates": jitter(s["inputs"]["particulates"])
                 }
                 update_status_from_dict(payload, device_id="simulation")
-        
-        elif CURRENT_SOURCE == "weather" and LAST_WEATHER_DATA:
-            # Map weather data to sensor payload
-            payload = {
-                "temperature": LAST_WEATHER_DATA.get("temperature_c", 20),
-                "humidity": LAST_WEATHER_DATA.get("humidity_pct", 50),
-                "pressure": LAST_WEATHER_DATA.get("pressure_hpa", 1013),
-                "light": 500 if 6 < datetime.now().hour < 18 else 10, # Mock light based on time
-                "sound_amp": 35.0, # Baseline noise
-                "vocs": LAST_WEATHER_DATA.get("voc_ppb", 0),
-                "particulates": LAST_WEATHER_DATA.get("pm25_ugm3", 5)
-            }
-            update_status_from_dict(payload, device_id="weather")
         
         await asyncio.sleep(2)
 
@@ -295,8 +263,8 @@ def update_status_from_dict(payload_data: dict, device_id: str = "simulation"):
     # Calculate base scores
     scores_reading = results["reading"]
     
-    # Use outdoor-aware health score
-    final_score = calculate_room_health_score(scores_reading, outdoor=LAST_WEATHER_DATA)
+    # Calculate room health score
+    final_score = calculate_room_health_score(scores_reading)
 
     # Calculate sub-activity scores
     sleep_res = calculate_sleep_score_with_breakdown(scores_reading)
@@ -317,7 +285,6 @@ def update_status_from_dict(payload_data: dict, device_id: str = "simulation"):
     }
     m.breakdown = ScoreBreakdown(
         base_mlp_score=results["base_score"],
-        voc_penalty=results["voc_penalty"],
         pm25_penalty=results["pm25_penalty"],
         final_score=results["final_score"]
     )
@@ -348,7 +315,7 @@ async def current_status(device_id: Optional[str] = None):
     global monitors
     # Default to first live device, or simulation if nothing else exists
     if not device_id:
-        live_ids = [k for k in monitors.keys() if k not in ["simulation", "weather"]]
+        live_ids = [k for k in monitors.keys() if k not in ["simulation"]]
         device_id = live_ids[0] if live_ids else "simulation"
     
     if device_id not in monitors:
@@ -478,11 +445,6 @@ async def select_scenario(selection: ScenarioSelect):
         print("🔌 Source Switched: LIVE (Hardware)")
         return {"status": "success", "source": "live"}
 
-    if selection.id == "weather":
-        CURRENT_SOURCE = "weather"
-        print("🌍 Source Switched: WEATHER (Local Outdoor)")
-        return {"status": "success", "source": "weather"}
-
     scenario = next((s for s in SIMULATION_SCENARIOS if s["id"] == selection.id), None)
     if not scenario:
         raise HTTPException(status_code=404, detail="Scenario not found")
@@ -495,7 +457,7 @@ async def select_scenario(selection: ScenarioSelect):
     payload = {
         "humidity": scenario["inputs"]["humidity"], "pressure": scenario["inputs"]["pressure"], "light": scenario["inputs"]["light"], "temperature": scenario["inputs"]["temperature"],
         "sound_high": 10.0, "sound_mid": 10.0, "sound_low": 10.0, "sound_amp": scenario["inputs"]["noise"],
-        "vocs": scenario["inputs"]["vocs"], "particulates": scenario["inputs"]["particulates"]
+        "particulates": scenario["inputs"]["particulates"]
     }
     update_status_from_dict(payload)
     

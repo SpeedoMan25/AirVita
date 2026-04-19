@@ -90,18 +90,6 @@ const SENSOR_META = {
       { label: 'Unhealthy', max: 55, color: '#fb923c', text: 'Limit prolonged outdoor exertion.' },
       { label: 'Poor', max: 150, color: '#f43f5e', text: 'Health risk. Use air purification.' },
     ],
-  },
-  voc_ppb: {
-    label: 'VOC', shortLabel: 'VOC', unit: 'ppb', icon: Activity,
-    iconColor: '#2dd4bf', 
-    min: 0, max: 1500,
-    getStatus: v => v < 300 ? 'FRESH' : v < 500 ? 'ACCEPTABLE' : v < 1000 ? 'ELEVATED' : 'POOR',
-    ranges: [
-      { label: 'Fresh', max: 300, color: '#2dd4bf', text: 'Clean, outdoor-quality air.' },
-      { label: 'Acceptable', max: 500, color: '#0ea5e9', text: 'Safe for long-term exposure.' },
-      { label: 'Elevated', max: 1000, color: '#fbbf24', text: 'Increased irritation possible.' },
-      { label: 'Poor', max: 1500, color: '#f43f5e', text: 'Immediate ventilation recommended.' },
-    ],
   }
 }
 
@@ -377,7 +365,7 @@ export default function App() {
       
       // Auto-select first Live monitor if currently on simulation
       if (activeMonitorId === 'simulation') {
-        const firstLive = data.find(m => m.id !== 'simulation' && m.id !== 'weather')
+        const firstLive = data.find(m => m.id !== 'simulation')
         if (firstLive) {
           setActiveMonitorId(firstLive.id)
           console.log(`🔌 Auto-switched to Live Monitor: ${firstLive.name}`)
@@ -583,7 +571,6 @@ export default function App() {
           >
             <option value="live" className="bg-zinc-900 text-zinc-200">Mode: Hardware</option>
             <option value="simulation" className="bg-zinc-900 text-zinc-200">Mode: Simulation</option>
-            <option value="weather" className="bg-zinc-900 text-zinc-200">Mode: Weather</option>
             {scenarios.map(s => <option key={s.id} value={s.id} className="bg-zinc-900 text-zinc-200">Preset: {s.name}</option>)}
           </select>
 
@@ -761,13 +748,12 @@ export default function App() {
                 const isActive = activeSensorKey === key;
                 const rawVal = reading?.[key];
                 const numericVal = rawVal != null ? (CONVERSIONS[key]?.[unitSystem]?.convert(rawVal) ?? rawVal) : null;
-                const isTopRow = idx < 4;
                 
                 return (
                   <div 
                     key={key} 
                     onClick={() => setActiveSensorKey(key)}
-                    className={`${isTopRow ? 'col-span-3' : 'col-span-4'} bg-[#09090b] relative p-4 flex flex-col group overflow-hidden cursor-pointer transition-colors ${isActive ? 'bg-zinc-900/40' : ''}`}
+                    className={`col-span-4 bg-[#09090b] relative p-4 flex flex-col group overflow-hidden cursor-pointer transition-colors ${isActive ? 'bg-zinc-900/40' : ''}`}
                   >
                     <div className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-500 pointer-events-none" style={{ background: `radial-gradient(circle at top right, ${meta.iconColor}, transparent 70%)` }}></div>
                     {isActive && <div className="absolute top-0 left-0 right-0 h-[1px]" style={{ backgroundColor: meta.iconColor, boxShadow: `0 0 8px ${meta.iconColor}`}}></div>}
@@ -840,7 +826,7 @@ export default function App() {
                   <div>
                     <div className="text-[#0ea5e9] mb-2">// Health Algorithm (MLP)</div>
                     <div>Base Score: <span className="text-zinc-300">{status.breakdown.base_mlp_score?.toFixed(1) || '0.0'}</span></div>
-                    <div>VOC Penalty: <span className="text-[#f43f5e]">{status.breakdown.voc_penalty?.toFixed(1) || '0.0'}</span></div>
+
                     <div>PM2.5 Penalty: <span className="text-[#f43f5e]">{status.breakdown.pm25_penalty?.toFixed(1) || '0.0'}</span></div>
                     <div className="border-t border-zinc-800 mt-2 pt-2">
                       Final IAQ: <span className="text-zinc-100 text-sm">{status.breakdown.final_score || '0'}</span>

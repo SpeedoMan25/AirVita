@@ -26,7 +26,7 @@ Reference standards:
 - Temperature: ASHRAE Standard 55 — thermal comfort 20–24°C (68–75°F)
 - Humidity: EPA — ideal 40–60% RH; below 30% causes dryness/static, above 60% promotes mold
 - PM2.5: WHO 2021 guideline — annual mean < 5 µg/m³, 24-h mean < 15 µg/m³; > 35 µg/m³ is unhealthy
-- VOCs: EPA — total VOC concern starts ~500 ppb; > 1000 ppb indicates poor ventilation
+
 - Noise: WHO Environmental Noise Guidelines — < 35 dB for sleep, < 55 dB for daytime activity
 - Light: IESNA — 300–500 lux for general office work; < 5 Lux for sleep
 - Pressure: Normal atmospheric 1013 hPa; significant deviations affect comfort and weather
@@ -122,7 +122,7 @@ def generate_analysis(reading: dict, scores: dict, room_ctx: dict) -> dict:
             f"- Noise Level:  {reading.get('noise_db', 'N/A')} dB",
             f"- Air Pressure: {reading.get('pressure_hpa', 'N/A')} hPa",
             f"- PM2.5:        {reading.get('pm25_ugm3', 'N/A')} µg/m³",
-            f"- VOCs:         {reading.get('voc_ppb', 'N/A')} ppb",
+
             f"- Room Health Score: {scores.get('health', 'N/A')}/99",
             f"- Sleep Conditions Score: {scores.get('sleep', 'N/A')}/99",
             f"- Work Conditions Score: {scores.get('work', 'N/A')}/99",

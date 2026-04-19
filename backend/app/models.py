@@ -20,7 +20,7 @@ class SensorReading(BaseModel):
     noise_db: Optional[float] = Field(None, description="Noise level in decibels")
     pressure_hpa: Optional[float] = Field(None, description="Atmospheric pressure in hPa")
     pm25_ugm3: Optional[float] = Field(None, description="PM2.5 particulate matter in µg/m³")
-    voc_ppb: Optional[float] = Field(None, description="Volatile organic compounds in ppb")
+
     pot_pct: float = Field(0.0, description="Potentiometer setting percentage")
     device_id: str = Field("unknown", description="ID of the device that generated this reading")
     timestamp_ms: Optional[int] = Field(None, description="Pico tick timestamp")
@@ -29,7 +29,7 @@ class SensorReading(BaseModel):
 class ScoreBreakdown(BaseModel):
     """Breakdown of the final IAQ score calculation."""
     base_mlp_score: float = Field(0.0, description="Score from the Neural Network")
-    voc_penalty: float = Field(0.0, description="Deduction due to VOCs")
+
     pm25_penalty: float = Field(0.0, description="Deduction due to Particulates")
     final_score: int = Field(0, description="Resulting clamped score")
 

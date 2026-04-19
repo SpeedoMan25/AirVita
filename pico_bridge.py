@@ -64,7 +64,6 @@ def bridge_loop(port_name):
                     "temperature": data.get("temperature"),
                     "sound_amp": data.get("sound_amp"),
                     "particulates": data.get("pm2_5", data.get("particulates", 0)),
-                    "vocs": data.get("vocs"),
                     "timestamp_ms": int(time.time() * 1000)
                 }
                 
