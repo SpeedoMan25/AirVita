@@ -61,7 +61,7 @@ def loop(dht_sensor):
             print(json.dumps({"error": str(e)}))
             
         # DHT11 requires at least 1-2 seconds between readings
-        time.sleep(2.0)
+        time.sleep(0.05)
 
 if __name__ == "__main__":
     try:
