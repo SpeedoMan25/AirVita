@@ -9,17 +9,17 @@ export default function MobilePairing({ onClose }) {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    async function fetchIp() {
-      try {
-        const res = await fetch(`${API_BASE}/api/connection-info`);
-        if (!res.ok) throw new Error("Failed to fetch connection info");
-        const data = await res.json();
-        setInfo(data);
-      } catch (err) {
-        setError(err.message);
-      }
+    const host = window.location.hostname;
+    const port = window.location.port ? `:${window.location.port}` : '';
+    
+    if (host === 'localhost' || host === '127.0.0.1') {
+      setError("Please access this dashboard using your Mac's Network IP (e.g. https://10.105.x.x:5173) instead of localhost to pair your phone.");
+    } else {
+      setInfo({
+        ip: host,
+        url: `https://${host}${port}`
+      });
     }
-    fetchIp();
   }, []);
 
   return (
@@ -33,7 +33,9 @@ export default function MobilePairing({ onClose }) {
         <p className="pairing-subtitle">Transform your phone into a live room sensor.</p>
         
         {error ? (
-          <div className="pairing-error">Could not detect LAN IP</div>
+          <div className="pairing-error" style={{ color: '#d96a5c', padding: '10px 20px', background: 'rgba(217, 106, 92, 0.1)', borderRadius: '12px', lineHeight: '1.6', marginTop: '20px' }}>
+            {error}
+          </div>
         ) : (
           <div className="pairing-qr-section">
             <div className="qr-container">
