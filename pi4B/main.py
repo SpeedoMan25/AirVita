@@ -25,7 +25,8 @@ except ImportError:
 DHT_PIN = board.D5 if 'board' in locals() else 5
 
 # Network Config
-BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
+# Strip accidental quotes (handles standard and 'smart' quotes from copy-paste)
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000").strip(' "\u201d\u201c')
 DEVICE_ID = os.getenv("DEVICE_ID", hex(uuid.getnode())) # MAC address based ID
 
 print(f"📡 Device ID: {DEVICE_ID}")
@@ -45,7 +46,8 @@ def setup():
     except Exception as e:
         print(f"❌ Cannot reach backend at {BACKEND_URL}.")
         print(f"   Error: {e}")
-        print("   Make sure the IP is correct and Tailscale is connected on both units.")
+        print(f"\n💡 Hint: If your backend is running on a Mac/PC, make sure to set the correct IP:")
+        print(f"   export BACKEND_URL=http://<YOUR_COMPUTER_IP>:8000")
 
     dht_sensor = None
     if adafruit_dht:

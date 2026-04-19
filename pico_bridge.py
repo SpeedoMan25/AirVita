@@ -4,12 +4,14 @@ import requests
 import time
 import sys
 import glob
-
+import os
 # ──────────────────────────────────────────────
 # Configuration
 # ──────────────────────────────────────────────
 BAUD_RATE = 115200
-BACKEND_URL = "http://localhost:8000/api/sensor-data"
+DEFAULT_BACKEND = "http://localhost:8000"
+BACKEND_BASE = os.getenv("BACKEND_URL", DEFAULT_BACKEND).strip(' "\u201d\u201c').rstrip('/')
+BACKEND_URL = f"{BACKEND_BASE}/api/sensor-data"
 DEVICE_ID = "Wired-Pico"
 
 def find_serial_port():
@@ -70,8 +72,13 @@ def bridge_loop(port_name):
                 # Might be a debug print or partial line
                 if "{" in line:
                     print(f"🤷 Received non-JSON: {line}")
+            except requests.exceptions.ConnectionError:
+                print(f"❌ Connection Refused: Cannot reach backend at {BACKEND_URL}")
+                print("   Check: 1. Is the Docker backend running? (./start.sh)")
+                print(f"   Check: 2. Is {BACKEND_URL} the correct address for your server?")
+                time.sleep(2) # Throttle retries
             except Exception as e:
-                print(f"❌ Error: {e}")
+                print(f"❌ Bridge Error: {e}")
 
     except serial.SerialException as e:
         print(f"❌ Serial Error: {e}")

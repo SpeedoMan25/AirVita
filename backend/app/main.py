@@ -175,13 +175,13 @@ async def lifespan(app: FastAPI):
     frontend_link = f"\033]8;;{frontend_url}\033\\{frontend_url}\033]8;;\033\\"
     backend_link = f"\033]8;;{backend_url}\033\\{backend_url}\033]8;;\033\\"
     
-    print("\n" + "─" * 30, flush=True)
+    print("\n" + "─" * 45, flush=True)
     print("🚀 AirVita Running\n", flush=True)
-    print("📱 Frontend:", flush=True)
+    print("📱 Dashboard:", flush=True)
     print(f"{frontend_link}\n", flush=True)
-    print("⚙️ Backend:", flush=True)
-    print(f"{backend_link}", flush=True)
-    print("─" * 30 + "\n", flush=True)
+    print("📡 Hardware Pairing (Pi 4B / Pico):", flush=True)
+    print(f"export BACKEND_URL={backend_url}\n", flush=True)
+    print("─" * 45 + "\n", flush=True)
     
     yield
     generator_task.cancel()
