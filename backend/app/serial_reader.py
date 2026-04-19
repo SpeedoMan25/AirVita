@@ -18,7 +18,7 @@ from typing import Optional
 from app.models import SensorReading, RoomStatus
 from app.scoring import calculate_room_health_score
 
-logger = logging.getLogger("roompulse.serial")
+logger = logging.getLogger("airvita.serial")
 
 # ──────────────────────────────────────────────
 # Shared application state (latest reading)

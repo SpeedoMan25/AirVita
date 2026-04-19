@@ -497,11 +497,17 @@ export default function App() {
       setIsScannerOpen(true);
       window.history.replaceState({}, '', window.location.pathname);
     }
-    
+
     fetchStatus()
     fetchScenarios()
-    const interval = setInterval(fetchStatus, POLL_INTERVAL_MS)
-    return () => clearInterval(interval)
+    const statusInterval = setInterval(fetchStatus, POLL_INTERVAL_MS)
+    const scenarioInterval = setInterval(() => {
+      if (scenarios.length === 0) fetchScenarios()
+    }, 5000)
+    return () => {
+      clearInterval(statusInterval)
+      clearInterval(scenarioInterval)
+    }
   }, [fetchStatus, fetchScenarios])
 
   const reading = status?.reading ?? null
@@ -534,12 +540,13 @@ export default function App() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <div style={{
-                background: '#4f46e5', padding: '8px', borderRadius: '12px',
-                color: '#fff', display: 'flex',
+                width: '32px', height: '32px', borderRadius: '8px',
+                overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: '#fff', border: '1px solid #e2e8f0',
               }}>
-                <LayoutDashboard size={20} />
+                <img src="/airvita-brand.png" alt="AirVita Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </div>
-              <span style={{ fontSize: '18px', fontWeight: 900, color: '#1e293b' }}>RoomPulse</span>
+              <span style={{ fontSize: '20px', fontWeight: 900, color: '#1e293b', letterSpacing: '-0.02em' }}>AirVita</span>
             </div>
 
             {/* Unit Toggle */}
@@ -1157,10 +1164,11 @@ export default function App() {
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div style={{
-                  background: '#4f46e5', padding: '8px', borderRadius: '12px',
-                  color: '#fff', display: 'flex',
+                  width: '32px', height: '32px', borderRadius: '8px',
+                  overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: '#fff', border: '1px solid #e2e8f0',
                 }}>
-                  <BrainCircuit size={20} />
+                  <img src="/airvita-brand.png" alt="AirVita Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 </div>
                 <h3 style={{ fontSize: '18px', fontWeight: 900, color: '#1e293b', margin: 0 }}>
                   Neural Engine
@@ -1184,7 +1192,7 @@ export default function App() {
                 fontSize: '10px', fontWeight: 800, textTransform: 'uppercase',
                 letterSpacing: '0.2em', color: '#94a3b8', marginBottom: '16px',
               }}>
-                Neural Override
+                Neural Override {scenarios.length > 0 ? `(${scenarios.length})` : '(Loading...)'}
               </h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {/* Live feed option */}
@@ -1200,7 +1208,9 @@ export default function App() {
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <LayoutDashboard size={18} />
+                  <div style={{ width: '18px', height: '18px', borderRadius: '4px', overflow: 'hidden' }}>
+                    <img src="/airvita-brand.png" alt="Logo" style={{ width: '100%', height: '100%' }} />
+                  </div>
                     <span style={{ fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                       Live Feed
                     </span>
@@ -1275,7 +1285,7 @@ export default function App() {
                 textTransform: 'uppercase', letterSpacing: '0.15em',
               }}>
                 <span>Core v1.4.2</span>
-                <span>RoomPulse System</span>
+                <span>AirVita System</span>
               </div>
             </div>
           </aside>

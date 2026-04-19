@@ -183,7 +183,7 @@ async def lifespan(app: FastAPI):
     backend_link = f"\033]8;;{backend_url}\033\\{backend_url}\033]8;;\033\\"
     
     print("\n" + "─" * 30, flush=True)
-    print("🚀 RoomPulse Running\n", flush=True)
+    print("🚀 AirVita Running\n", flush=True)
     print("📱 Frontend:", flush=True)
     print(f"{frontend_link}\n", flush=True)
     print("⚙️ Backend:", flush=True)
@@ -306,7 +306,7 @@ def update_status_from_dict(payload_data: dict):
         print("🔌 Production Mode: Waiting for serial data...")
         pass
 
-app = FastAPI(title="RoomPulse Hybrid IAQ Backend", lifespan=lifespan)
+app = FastAPI(title="AirVita Hybrid IAQ Backend", lifespan=lifespan)
 
 # Add CORS middleware
 app.add_middleware(
@@ -319,7 +319,7 @@ app.add_middleware(
 
 @app.get("/")
 async def root():
-    return {"service": "RoomPulse API", "status": "running"}
+    return {"service": "AirVita API", "status": "running"}
 
 @app.get("/api/current-status", response_model=RoomStatus)
 async def current_status():

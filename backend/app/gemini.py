@@ -1,5 +1,5 @@
 """
-Gemini AI Analysis — RoomPulse
+Gemini AI Analysis — AirVita
 
 Sends current sensor readings to Gemini 2.0 Flash and returns a
 research-backed health summary and list of flagged concerns.
@@ -10,7 +10,7 @@ import logging
 import os
 from typing import Optional
 
-logger = logging.getLogger("roompulse.gemini")
+logger = logging.getLogger("airvita.gemini")
 
 
 # ──────────────────────────────────────────────
