@@ -9,12 +9,24 @@ export default function MobilePairing({ onClose, deviceId }) {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // USING CLOUDFLARE TUNNEL FOR TRUSTED HTTPS (Solves Black Screen)
-    const base = 'twelve-thompson-overhead-homework.trycloudflare.com';
-    setInfo({ 
-      ip: base, 
-      url: `https://${base}?device_id=${deviceId}#scan` 
-    });
+    const fetchInfo = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/connection-info`);
+        if (res.ok) {
+          const data = await res.json();
+          setInfo({
+            ip: data.ip,
+            url: `${data.url}?device_id=${deviceId}#scan`
+          });
+        } else {
+          setError("Backend unreachable (500). Ensure backend is running.");
+        }
+      } catch (err) {
+        console.error("Failed to fetch connection info", err);
+        setError("Failed to connect to backend for sync info. Is the server running?");
+      }
+    };
+    fetchInfo();
   }, [deviceId]);
 
   return (

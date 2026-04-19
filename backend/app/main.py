@@ -61,10 +61,10 @@ BIAS = 0.0
 
 class SensorDataPayload(BaseModel):
     device_id: str = Field(..., description="Unique ID of the transmitting device")
-    humidity: float
-    pressure: float
-    light: float
-    temperature: float
+    humidity: float = 0.0
+    pressure: float = 0.0
+    light: float = 0.0
+    temperature: float = 0.0
     sound_high: float = 0.0
     sound_mid: float = 0.0
     sound_low: float = 0.0
@@ -170,7 +170,7 @@ async def lifespan(app: FastAPI):
     
     # Print LAN-accessible URLs banner
     ip = get_lan_ip()
-    frontend_url = f"http://{ip}:5173"
+    frontend_url = f"https://{ip}:5173"
     backend_url = f"http://{ip}:8000"
     frontend_link = f"\033]8;;{frontend_url}\033\\{frontend_url}\033]8;;\033\\"
     backend_link = f"\033]8;;{backend_url}\033\\{backend_url}\033]8;;\033\\"
@@ -352,7 +352,7 @@ async def current_status(device_id: Optional[str] = None):
             
     return monitors[device_id]
 
-@app.get("/api/monitors")
+@app.api_route("/api/monitors", methods=["GET", "HEAD"])
 async def get_monitors():
     """Returns a list of all active monitors."""
     return [
@@ -398,9 +398,13 @@ import socket
 
 @app.get("/api/connection-info")
 async def connection_info():
-    """Returns the LAN IP for mobile pairing."""
+    """Returns the LAN IP or Tunnel URL for mobile pairing."""
+    tunnel_url = os.getenv("TUNNEL_URL")
+    if tunnel_url:
+        return {"ip": tunnel_url, "url": tunnel_url}
+    
     ip = get_lan_ip()
-    return {"ip": ip, "url": f"http://{ip}:5173"}
+    return {"ip": ip, "url": f"https://{ip}:5173"}
 
 @app.get("/api/analyze")
 async def analyze_room(device_id: str):

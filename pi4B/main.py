@@ -94,7 +94,7 @@ def loop(dht_sensor):
                     if res.status_code != 200:
                         print(f"⚠️ Backend returned error: {res.status_code}")
                 except Exception as e:
-                    print(f"❌ Network error: {e}")
+                    print(f"❌ Network error hitting {BACKEND_URL}/api/sensor-data: {e}")
             
         except Exception as e:
             print(json.dumps({"error": str(e)}))

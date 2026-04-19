@@ -26,6 +26,7 @@ services:
       - MOCK_SERIAL=true
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - HOST_IP=${HOST_IP:-127.0.0.1}
+      - TUNNEL_URL=${TUNNEL_URL:-}
     volumes:
       - ./backend:/app
     restart: unless-stopped
@@ -36,7 +37,7 @@ services:
     ports:
       - "5173:5173"
     environment:
-      - VITE_API_URL=http://localhost:8000
+      - VITE_API_URL=
     volumes:
       - ./frontend:/app
       - /app/node_modules
