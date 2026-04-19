@@ -119,6 +119,8 @@ def predict_score(data: dict) -> dict:
         }
     }
 
+from app.cv import classifier
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global model, scaler
@@ -128,18 +130,21 @@ async def lifespan(app: FastAPI):
             model = joblib.load(MODEL_PATH)
             scaler = joblib.load(SCALER_PATH)
             print("MLP model and scaler loaded successfully.")
-        else:
-            print(f"Warning: Model files not found at {MODEL_PATH}.")
     except Exception as e:
         print(f"Error loading models: {e}")
+    
+    # Initialize Room Classifier (Places365)
+    try:
+        classifier.load_model()
+    except Exception as e:
+        print(f"Error loading CV model: {e}")
     
     # Start background task for data generation
     generator_task = asyncio.create_task(run_data_generator())
     
     yield
-    
-    # Cleanup
     generator_task.cancel()
+
 
 async def run_data_generator():
     """
@@ -238,6 +243,20 @@ async def root():
 async def current_status():
     return latest_status
 
+import socket
+
+@app.get("/api/connection-info")
+async def connection_info():
+    """Returns the LAN IP for mobile pairing."""
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return {"ip": ip, "url": f"https://{ip}:5173"}
+    except Exception:
+        return {"ip": "127.0.0.1", "url": "https://localhost:5173"}
+
 @app.get("/api/analyze")
 async def analyze_room():
     """
@@ -300,3 +319,12 @@ async def select_scenario(selection: ScenarioSelect):
 @app.get("/health")
 async def health():
     return {"status": "ready", "model_active": model is not None}
+
+@app.post("/api/scan-room")
+async def scan_room(payload: dict):
+    if "image" not in payload:
+        raise HTTPException(status_code=400, detail="Image required")
+    result = classifier.predict(payload["image"])
+    if "error" in result:
+        raise HTTPException(status_code=500, detail=result["error"])
+    return result

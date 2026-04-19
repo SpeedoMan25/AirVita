@@ -5,9 +5,13 @@ import SensorGrid, { SensorInfoDrawer, SENSOR_META } from './components/SensorCa
 import AISummary from './components/AISummary'
 import ScenarioControls from './components/ScenarioControls'
 import CalculationMath from './components/CalculationMath'
+import RoomScanner from './components/RoomScanner'
+import MobilePairing from './components/MobilePairing'
 import './App.css'
 
-const API_BASE = import.meta.env.VITE_API_URL || ''
+const API_BASE = import.meta.env.DEV
+  ? `http://${window.location.hostname}:8000`
+  : import.meta.env.VITE_API_URL || '';
 const POLL_INTERVAL_MS = 2000
 
 export default function App() {
@@ -27,6 +31,8 @@ export default function App() {
   // Drawer state (from origin/main)
   const [activeSensorKey, setActiveSensorKey] = useState(null)
   const [isTechOpen, setIsTechOpen] = useState(false)
+  const [isScannerOpen, setIsScannerOpen] = useState(false)
+  const [isPairingOpen, setIsPairingOpen] = useState(false)
   const [unitSystem, setUnitSystem] = useState('metric') // 'metric' or 'imperial'
 
   const toggleSensorInfo = useCallback((key) => {
@@ -132,6 +138,33 @@ export default function App() {
           </div>
 
           <div className="app__header-right">
+            <button 
+              className="app__scanner-toggle"
+              onClick={() => setIsPairingOpen(true)}
+              title="Pair Phone via QR Code"
+              style={{ padding: '8px 12px' }}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '18px', height: '18px' }}>
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <rect x="7" y="7" width="3" height="3"/>
+                <rect x="14" y="7" width="3" height="3"/>
+                <rect x="7" y="14" width="3" height="3"/>
+                <rect x="14" y="14" width="3" height="3"/>
+              </svg>
+            </button>
+            
+            <button 
+              className={`app__scanner-toggle ${isScannerOpen ? 'app__scanner-toggle--active' : ''}`}
+              onClick={() => setIsScannerOpen(!isScannerOpen)}
+              title="Open Scanner Camera"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '18px', height: '18px' }}>
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                <circle cx="12" cy="13" r="4" />
+              </svg>
+              <span>Scan</span>
+            </button>
+
             <div className="app__unit-toggle">
               <button 
                 className={`app__unit-btn ${unitSystem === 'metric' ? 'app__unit-btn--active' : ''}`}
@@ -234,6 +267,17 @@ export default function App() {
           unitSystem={unitSystem}
         />
       )}
+
+      {/* Room Classification Scanner */}
+      {isScannerOpen && (
+        <RoomScanner onClose={() => setIsScannerOpen(false)} />
+      )}
+
+      {/* Mobile QR Pairing */}
+      {isPairingOpen && (
+        <MobilePairing onClose={() => setIsPairingOpen(false)} />
+      )}
     </div>
   )
 }
+
