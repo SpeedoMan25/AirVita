@@ -127,6 +127,32 @@
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+.app__scanner-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  color: var(--text-primary, #333);
+  padding: 8px 16px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+  font-weight: 600;
+}
+
+.app__scanner-toggle:hover {
+  background: rgba(0, 0, 0, 0.08);
+  border-color: rgba(0, 0, 0, 0.15);
+}
+
+.app__scanner-toggle--active {
+  background: rgba(79, 172, 254, 0.1);
+  border-color: rgba(79, 172, 254, 0.4);
+  color: #4facfe;
+}
+
 .app__unit-btn--active {
   background: #fff;
   color: var(--primary);

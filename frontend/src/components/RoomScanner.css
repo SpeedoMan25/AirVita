@@ -1,0 +1,167 @@
+.room-scanner {
+  position: fixed;
+  bottom: 100px;
+  right: 30px;
+  width: 280px;
+  z-index: 1000;
+  animation: slideUp 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes slideUp {
+  from { transform: translateY(50px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.room-scanner__box {
+  background: rgba(15, 15, 20, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+
+.room-scanner__video-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1/1;
+  background: #000;
+}
+
+.room-scanner__video-wrap video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.9;
+}
+
+.room-scanner__overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  border: 2px solid rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.5);
+}
+
+.room-scanner__scan-line {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #4facfe, #00f2fe, #4facfe, transparent);
+  box-shadow: 0 0 15px #00f2fe;
+  animation: scanLoop 4s linear infinite;
+}
+
+@keyframes scanLoop {
+  0% { top: 0; }
+  50% { top: 100%; }
+  100% { top: 0; }
+}
+
+.room-scanner__content {
+  padding: 16px;
+}
+
+.room-scanner__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.room-scanner__header p {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  opacity: 0.6;
+  flex: 1;
+}
+
+.room-scanner__status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #4facfe;
+  box-shadow: 0 0 8px #4facfe;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.5); opacity: 0.5; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.room-scanner__minimize {
+  background: none;
+  border: none;
+  color: white;
+  padding: 4px;
+  cursor: pointer;
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+
+.room-scanner__minimize:hover {
+  opacity: 1;
+}
+
+.room-scanner__room-name {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin: 0 0 8px 0;
+  letter-spacing: -0.5px;
+  background: linear-gradient(90deg, #fff, #bbb);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.room-scanner__confidence {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.room-scanner__progress-track {
+  flex: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.room-scanner__progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4facfe, #00f2fe);
+  transition: width 0.4s ease;
+}
+
+.room-scanner__confidence span {
+  font-size: 0.75rem;
+  font-weight: 600;
+  opacity: 0.5;
+  min-width: 60px;
+}
+
+.room-scanner__error {
+  background: rgba(220, 50, 50, 0.2);
+  backdrop-filter: blur(10px);
+  padding: 20px;
+  border-radius: 20px;
+  border: 1px solid rgba(220, 50, 50, 0.3);
+  text-align: center;
+}
+
+.room-scanner__close {
+  background: white;
+  color: black;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-weight: 700;
+  margin-top: 10px;
+  cursor: pointer;
+}

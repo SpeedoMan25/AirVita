@@ -4,9 +4,13 @@ import SensorGrid, { SensorInfoDrawer, SENSOR_META } from './components/SensorCa
 import AISummary from './components/AISummary'
 import ScenarioControls from './components/ScenarioControls'
 import CalculationMath from './components/CalculationMath'
+import RoomScanner from './components/RoomScanner'
+import MobilePairing from './components/MobilePairing'
 import './App.css'
 
-const API_BASE = import.meta.env.VITE_API_URL || ''
+const API_BASE = import.meta.env.DEV
+  ? `http://${window.location.hostname}:8000`
+  : import.meta.env.VITE_API_URL || '';
 const POLL_INTERVAL_MS = 2000
 
 export default function App() {
@@ -26,8 +30,10 @@ export default function App() {
   // Drawer state (from origin/main)
   const [activeSensorKey, setActiveSensorKey] = useState(null)
   const [isTechOpen, setIsTechOpen] = useState(false)
-  const [unitSystem, setUnitSystem] = useState('imperial') // 'metric' or 'imperial' default
-  const [selectedActivity, setSelectedActivity] = useState('health') 
+  const [unitSystem, setUnitSystem] = useState('metric') // 'metric' or 'imperial'
+  const [selectedActivity, setSelectedActivity] = useState('health')
+  const [isScannerOpen, setIsScannerOpen] = useState(false)
+  const [isPairingOpen, setIsPairingOpen] = useState(false)
 
   const toggleSensorInfo = useCallback((key) => {
     setActiveSensorKey(prev => prev === key ? null : key)
@@ -108,8 +114,8 @@ export default function App() {
   const connected = status?.connected ?? false
 
   // Get current breakdown based on selection
-  const currentBreakdown = selectedActivity === 'health' 
-    ? breakdown 
+  const currentBreakdown = selectedActivity === 'health'
+    ? breakdown
     : { type: 'weighted', activity: selectedActivity, factors: activityBreakdowns[selectedActivity] }
 
   return (
@@ -117,7 +123,7 @@ export default function App() {
       <div className="app__content-wrapper">
         <header className="app__header">
           <div className="app__brand">
-            <button 
+            <button
               className={`app__tech-toggle ${isTechOpen ? 'app__tech-toggle--active' : ''}`}
               onClick={toggleTechDrawer}
               title="Neural Engine Settings"
@@ -137,23 +143,42 @@ export default function App() {
           </div>
 
           <div className="app__header-right">
+            <button
+              className={`app__scanner-toggle ${(isScannerOpen || isPairingOpen) ? 'app__scanner-toggle--active' : ''}`}
+              onClick={() => {
+                const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+                if (isMobile) {
+                  setIsScannerOpen(!isScannerOpen);
+                } else {
+                  setIsPairingOpen(true);
+                }
+              }}
+              title="Scan / Classify Room"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '18px', height: '18px' }}>
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9z" />
+                <polyline points="9 22 9 12 15 12 15 22" />
+              </svg>
+              <span>Scan Room</span>
+            </button>
+
             <div className="app__unit-toggle">
-              <button 
+              <button
                 className={`app__unit-btn ${unitSystem === 'metric' ? 'app__unit-btn--active' : ''}`}
                 onClick={() => setUnitSystem('metric')}
               >
                 Metric
               </button>
-              <button 
+              <button
                 className={`app__unit-btn ${unitSystem === 'imperial' ? 'app__unit-btn--active' : ''}`}
                 onClick={() => setUnitSystem('imperial')}
               >
                 Imperial
               </button>
             </div>
-            
+
             <div className="app__source-select-wrap">
-              <select 
+              <select
                 className="app__source-select"
                 value={manualScenarioId || 'live'}
                 onChange={(e) => selectScenario(e.target.value)}
@@ -190,37 +215,37 @@ export default function App() {
           {/* Hero Row: Gauges + AI Summary */}
           <div className="app__hero">
             <div className="app__gauges">
-              <ScoreGauge 
-                type="health" 
-                score={status?.score} 
+              <ScoreGauge
+                type="health"
+                score={status?.score}
                 isActive={selectedActivity === 'health'}
                 onClick={() => setSelectedActivity('health')}
                 onInfoClick={toggleSensorInfo}
               />
-              <ScoreGauge 
-                type="sleep" 
-                score={status?.sleep_score} 
+              <ScoreGauge
+                type="sleep"
+                score={status?.sleep_score}
                 isActive={selectedActivity === 'sleep'}
                 onClick={() => setSelectedActivity('sleep')}
                 onInfoClick={toggleSensorInfo}
               />
-              <ScoreGauge 
-                type="study" 
-                score={status?.study_score} 
+              <ScoreGauge
+                type="study"
+                score={status?.study_score}
                 isActive={selectedActivity === 'study'}
                 onClick={() => setSelectedActivity('study')}
                 onInfoClick={toggleSensorInfo}
               />
-              <ScoreGauge 
-                type="work" 
-                score={status?.work_score} 
+              <ScoreGauge
+                type="work"
+                score={status?.work_score}
                 isActive={selectedActivity === 'work'}
                 onClick={() => setSelectedActivity('work')}
                 onInfoClick={toggleSensorInfo}
               />
-              <ScoreGauge 
-                type="fun" 
-                score={status?.fun_score} 
+              <ScoreGauge
+                type="fun"
+                score={status?.fun_score}
                 isActive={selectedActivity === 'fun'}
                 onClick={() => setSelectedActivity('fun')}
                 onInfoClick={toggleSensorInfo}
@@ -238,8 +263,8 @@ export default function App() {
           {/* Sensor Readings section */}
           <section className="app__sensors">
             <h2 className="app__section-label">Real-Time Sensors</h2>
-            <SensorGrid 
-              reading={reading} 
+            <SensorGrid
+              reading={reading}
               onInfoClick={toggleSensorInfo}
               unitSystem={unitSystem}
             />
@@ -270,16 +295,16 @@ export default function App() {
             {/* Full Transparency: Render all scoring math */}
             <CalculationMath breakdown={breakdown} />
             {Object.keys(activityBreakdowns).map(act => (
-              <CalculationMath 
-                key={act} 
-                breakdown={{ type: 'weighted', activity: act, factors: activityBreakdowns[act] }} 
+              <CalculationMath
+                key={act}
+                breakdown={{ type: 'weighted', activity: act, factors: activityBreakdowns[act] }}
               />
             ))}
-            
+
             <div className="app__tech-divider"></div>
             <h4 className="app__tech-section-title">Environment Simulation</h4>
-            <ScenarioControls 
-              scenarios={scenarios} 
+            <ScenarioControls
+              scenarios={scenarios}
               activeId={manualScenarioId}
               onSelect={selectScenario}
             />
@@ -296,6 +321,17 @@ export default function App() {
           unitSystem={unitSystem}
         />
       )}
+
+      {/* Room Classification Scanner */}
+      {isScannerOpen && (
+        <RoomScanner onClose={() => setIsScannerOpen(false)} />
+      )}
+
+      {/* Mobile QR Pairing */}
+      {isPairingOpen && (
+        <MobilePairing onClose={() => setIsPairingOpen(false)} />
+      )}
     </div>
   )
 }
+
