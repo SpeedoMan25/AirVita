@@ -21,12 +21,15 @@ class BH1750:
 
     def read(self):
         try:
+            # Trigger a new measurement
+            self.bus.write_byte(self.address, self.mode)
+            time.sleep(0.18)  # BH1750 needs ~180ms for H-res measurement
             # Read 2 bytes of data
             data = self.bus.read_i2c_block_data(self.address, self.mode, 2)
             lux = (data[0] << 8 | data[1]) / 1.2
             return round(lux, 2)
         except Exception as e:
-            # print(f"BH1750 Read Failed: {e}")
+            print(f"BH1750 Read Failed: {e}")
             return 0.0
 
     def close(self):

@@ -71,7 +71,7 @@ def main():
             lux = light_sensor.read() if light_sensor else 0.0
             
             # 3. Read Noise
-            noise_db = mic.get_noise_level() if mic else 35.0
+            noise_db = mic.get_noise_level() if mic else 0.0
 
             # 4. Build Payload
             payload = {
@@ -79,12 +79,12 @@ def main():
                 "temperature": temp if temp is not None else 22.0,
                 "humidity": hum if hum is not None else 40.0,
                 "light": lux,
-                "sound_db": noise_db,
+                "sound_amp": noise_db,
                 "timestamp_ms": int(time.time() * 1000)
             }
 
             # 5. Output to logger/console
-            print(f"📊 [TEMP: {payload['temperature']}°C | HUM: {payload['humidity']}% | LUX: {payload['light']} | SOUND: {payload['sound_db']}dB]")
+            print(f"📊 [TEMP: {payload['temperature']}°C | HUM: {payload['humidity']}% | LUX: {payload['light']} | SOUND: {payload['sound_amp']}dB]")
             
             # 6. POST to Backend
             try:
