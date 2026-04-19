@@ -17,62 +17,61 @@ except ImportError as e:
 # --- Configuration ---
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000").strip(' "\u201d\u201c')
 DEVICE_ID = os.getenv("DEVICE_ID", hex(uuid.getnode()))
-POLL_INTERVAL = 2
+POLL_INTERVAL = 1.0 # Faster polling for live feeling
 
 def main():
     print(f"📡 Device ID: {DEVICE_ID}")
     print(f"🔗 Target Backend: {BACKEND_URL}")
-    print("\nStarting AirVita (Light + Audio Configuration)...")
+    print("\nAirVita Live Hardware Mode (GY-302 Light + INMP441 Audio)")
+    print("-" * 50)
 
     # 1. Initialize Light Sensor (Pins 3, 5)
+    light_sensor = None
     try:
         light_sensor = BH1750()
         light_sensor.init()
-        print("✅ Light Sensor (GY-302) Detected.")
+        # Verify it works immediately
+        test_lx = light_sensor.read()
+        print(f"✅ Light Sensor Active: {test_lx} Lux")
     except Exception as e:
-        light_sensor = None
-        print(f"⚠️ Light Sensor not found [Pins 3, 5]: {e}")
+        print(f"⚠️ Light Sensor (BH1750) not responding on I2C (Pins 3, 5).")
+        print(f"   Check your wiring and ensure 'dtparam=i2c_arm=on' is in config.txt")
 
     # 2. Initialize Microphone (Pins 12, 35, 38)
+    mic = None
     try:
         mic = MicrophoneHandler()
-        print("✅ Microphone (INMP441) Initialized.")
+        # Test it
+        test_db = mic.get_noise_level()
+        print(f"✅ Audio Active: {test_db} dB")
     except Exception as e:
-        mic = None
-        print(f"⚠️ Microphone error [Pins 12, 35, 38]: {e}")
+        print(f"⚠️ Microphone error (INMP441). Ensure I2S is enabled.")
 
-    # 3. Connectivity Check
-    try:
-        print("🔍 Checking AirVita Backend...")
-        requests.get(f"{BACKEND_URL}/api/monitors", timeout=3)
-        print("✅ Backend Reachable.")
-    except:
-        print("❌ Backend Unreachable. Data will be logged to console only.")
-
-    print("\nMonitoring Active. Press Ctrl+C to exit.")
+    print("\nMonitoring Started. Data flow is LIVE.")
 
     try:
         while True:
             # Data Collection
-            lux = light_sensor.read() if light_sensor else 0.0
-            noise_db = mic.get_noise_level() if mic else 0.0
-
-            # Payload (Mocking env data to satisfy backend requirements)
+            # We ONLY collect what we have. No more mock values.
             payload = {
                 "device_id": DEVICE_ID,
-                "temperature": 22.0,  # No environmental sensor connected
-                "humidity": 40.0,
-                "pressure": 1013.25,
-                "light": lux,
-                "sound_amp": noise_db,
                 "timestamp_ms": int(time.time() * 1000)
             }
 
-            print(f"📤 Data: Light: {lux}lx | Noise: {noise_db}dB")
+            if light_sensor:
+                payload["light"] = light_sensor.read()
+            
+            if mic:
+                payload["sound_amp"] = mic.get_noise_level()
 
-            # Upload
+            # Output
+            l_val = payload.get("light", "N/A")
+            n_val = payload.get("sound_amp", "N/A")
+            print(f"📤 [LIVE] Light: {l_val} lx | Noise: {n_val} dB")
+
+            # Upload to Backend
             try:
-                requests.post(f"{BACKEND_URL}/api/sensor-data", json=payload, timeout=2)
+                requests.post(f"{BACKEND_URL}/api/sensor-data", json=payload, timeout=0.8)
             except:
                 pass
 
