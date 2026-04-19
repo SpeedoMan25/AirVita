@@ -1,41 +1,40 @@
-import time
 import sys
+import os
+import time
 
-def test_dht11():
-    print("--- DHT11 Grove D5 Diagnostic ---")
+# Setup paths
+sys.path.append(os.path.join(os.path.dirname(__file__), 'lib'))
+
+def diagnostic():
+    print("🔬 AirVita Pi 4B Diagnostic Tool")
+    print("-" * 40)
+
+    # 1. GY-302 Light Sensor
+    print("\n🔍 Checking Light Sensor (GY-302)...")
     try:
-        import adafruit_dht
-        import board
-    except ImportError:
-        print("Error: Required libraries not found.")
-        print("Run: pip3 install adafruit-circuitpython-dht")
-        return
+        from bh1750 import BH1750
+        light = BH1750()
+        light.init()
+        lx = light.read()
+        print(f"   ✅ Detected! Current Light: {lx} Lux")
+        light.close()
+    except Exception as e:
+        print(f"   ❌ Failed: {e}")
+        print("   💡 Tip: Check Pins 3 & 5 (SDA/SCL) and ensure 'i2c' is enabled in raspi-config.")
 
-    # D5 port on Seeed Grove Hat maps to GPIO 5
-    DHT_PIN = board.D5
-    dht = adafruit_dht.DHT11(DHT_PIN)
-    
-    print(f"Testing DHT11 on GPIO {DHT_PIN}...")
-    print("Waiting for stable reading (usually 2-4 seconds)...")
-    
-    success = False
-    for i in range(5):
-        try:
-            temp = dht.temperature
-            hum = dht.humidity
-            if temp is not None:
-                print(f"[✓] Success! Temp: {temp}C | Hum: {hum}%")
-                success = True
-                break
-        except RuntimeError:
-            print(f"Attempt {i+1}: Reading failed (normal for DHT), retrying...")
-            time.sleep(2)
-            
-    if not success:
-        print("[!] Failed to get a reading after 5 attempts.")
-        print("Check that the sensor is plugged firmly into port D5.")
+    # 2. INMP441 Microphone
+    print("\n🔍 Checking Microphone (INMP441)...")
+    try:
+        from mic_handler import MicrophoneHandler
+        mic = MicrophoneHandler()
+        db = mic.get_noise_level()
+        print(f"   ✅ Initialized! Current Noise: {db} dB")
+    except Exception as e:
+        print(f"   ❌ Failed: {e}")
+        print("   💡 Tip: Check Pins 12, 35, 38 and ensure I2S is enabled in /boot/firmware/config.txt.")
 
-    dht.exit()
+    print("\n" + "-" * 40)
+    print("Diagnostic Complete.")
 
 if __name__ == "__main__":
-    test_dht11()
+    diagnostic()
