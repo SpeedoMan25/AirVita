@@ -1,41 +1,56 @@
 import time
 import sys
+import os
 
-def test_dht11():
-    print("--- DHT11 Grove D5 Diagnostic ---")
+# Include lib/ in path for imports
+sys.path.append(os.path.join(os.path.dirname(__file__), 'lib'))
+
+def test_suite():
+    print("=== AirVita Pi4B Diagnostic Suite ===")
+    
+    # 1. Test DHT11
+    print("\n[1/3] Testing DHT11 on Grove D5...")
     try:
-        import adafruit_dht
-        import board
-    except ImportError:
-        print("Error: Required libraries not found.")
-        print("Run: pip3 install adafruit-circuitpython-dht")
-        return
-
-    # D5 port on Seeed Grove Hat maps to GPIO 5
-    DHT_PIN = board.D5
-    dht = adafruit_dht.DHT11(DHT_PIN)
-    
-    print(f"Testing DHT11 on GPIO {DHT_PIN}...")
-    print("Waiting for stable reading (usually 2-4 seconds)...")
-    
-    success = False
-    for i in range(5):
-        try:
-            temp = dht.temperature
-            hum = dht.humidity
+        from dht11_handler import DHT11Handler
+        dht = DHT11Handler()
+        success = False
+        for i in range(5):
+            temp, hum = dht.read()
             if temp is not None:
-                print(f"[✓] Success! Temp: {temp}C | Hum: {hum}%")
+                print(f"  [✓] DHT11 Success: {temp}C, {hum}%")
                 success = True
                 break
-        except RuntimeError:
-            print(f"Attempt {i+1}: Reading failed (normal for DHT), retrying...")
+            print(f"  [.] Attempt {i+1} failed, retrying...")
             time.sleep(2)
-            
-    if not success:
-        print("[!] Failed to get a reading after 5 attempts.")
-        print("Check that the sensor is plugged firmly into port D5.")
+        if not success:
+            print("  [!] DHT11 Failed to provide a reading.")
+        dht.close()
+    except Exception as e:
+        print(f"  [!] DHT11 Error: {e}")
 
-    dht.exit()
+    # 2. Test BH1750
+    print("\n[2/3] Testing BH1750 Light Sensor...")
+    try:
+        from bh1750 import BH1750
+        light = BH1750()
+        light.init()
+        lux = light.read()
+        print(f"  [✓] BH1750 Success: {lux} lux")
+        light.close()
+    except Exception as e:
+        print(f"  [!] BH1750 Error: {e}")
+
+    # 3. Test INMP441
+    print("\n[3/3] Testing INMP441 Microphone...")
+    try:
+        from mic_handler import MicrophoneHandler
+        mic = MicrophoneHandler()
+        db = mic.get_noise_level()
+        print(f"  [✓] INMP441 Success: {db} dB")
+    except Exception as e:
+        print(f"  [!] Microphone Error: {e}")
+
+    print("\n=== Diagnostic Complete ===")
 
 if __name__ == "__main__":
-    test_dht11()
+    test_suite()

@@ -8,16 +8,14 @@ import sys
 # Import custom drivers from lib/
 sys.path.append(os.path.join(os.path.dirname(__file__), 'lib'))
 try:
-    from bme688 import BME688
+    from dht11_handler import DHT11Handler
     from bh1750 import BH1750
-    from pms5003 import PMS5003
     from mic_handler import MicrophoneHandler
 except ImportError as e:
     print(f"❌ Driver Import Error: {e}")
     print("Ensure all files are in pi4B/lib/")
 
 # --- Configuration ---
-# Allow setting backend via environment variable
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000").strip(' "\u201d\u201c')
 DEVICE_ID = os.getenv("DEVICE_ID", hex(uuid.getnode())) # MAC address based ID
 POLL_INTERVAL = 2  # Seconds
@@ -25,16 +23,16 @@ POLL_INTERVAL = 2  # Seconds
 def main():
     print(f"📡 Device ID: {DEVICE_ID}")
     print(f"🔗 Target Backend: {BACKEND_URL}")
-    print("Initializing AirVita Sensor Suite...")
+    print("Initializing AirVita Simplified Sensor Suite (Pi4B)...")
 
     # Initialize Drivers
-    # BME688 (Environment)
+    # DHT11 (Temp/Hum)
     try:
-        bme = BME688()
-        print("✅ BME688 Initialized (I2C 0x76)")
+        dht = DHT11Handler()
+        print("✅ DHT11 Initialized (Grove D5)")
     except Exception as e:
-        bme = None
-        print(f"⚠️ BME688 not found: {e}")
+        dht = None
+        print(f"⚠️ DHT11 not found or failed to init: {e}")
 
     # BH1750 (Light)
     try:
@@ -45,18 +43,10 @@ def main():
         light_sensor = None
         print(f"⚠️ BH1750 not found: {e}")
 
-    # PMS5003 (Particulates)
-    try:
-        pms = PMS5003()
-        print("✅ PMS5003 Initialized (Serial)")
-    except Exception as e:
-        pms = None
-        print(f"⚠️ PMS5003 not found: {e}")
-
     # Microphone (Noise)
     try:
         mic = MicrophoneHandler()
-        print("✅ Microphone Initialized (ALSA)")
+        print("✅ Microphone Initialized (I2S/ALSA)")
     except Exception as e:
         mic = None
         print(f"⚠️ Microphone not found: {e}")
@@ -64,63 +54,55 @@ def main():
     # Check Connectivity
     try:
         print("🔍 Checking backend connectivity...")
+        # Check if backend is reachable
         requests.get(f"{BACKEND_URL}/api/monitors", timeout=3)
         print("✅ Successfully connected to AirVita backend!")
     except Exception as e:
         print(f"❌ Cannot reach backend at {BACKEND_URL}.\n   Error: {e}")
-        print("\n💡 Hint: Check your BACKEND_URL and ensure the server is running.")
 
-    print("Monitoring started. Press Ctrl+C to stop.")
+    print("\n🚀 Monitoring started. Press Ctrl+C to stop.\n")
 
     try:
         while True:
-            # 1. Read BME688 (Environment)
-            env_data = bme.read_all() if bme else {}
-            if env_data is None: env_data = {}
+            # 1. Read DHT11 (Environment)
+            temp, hum = dht.read() if dht else (None, None)
             
             # 2. Read Light
-            lux = light_sensor.read() if light_sensor else 400.0
+            lux = light_sensor.read() if light_sensor else 0.0
             
-            # 3. Read Particulates
-            pm_data = pms.read() if pms else {"pm2_5": 5}
-            if pm_data is None: pm_data = {"pm2_5": 5}
-            
-            # 4. Read Noise
+            # 3. Read Noise
             noise_db = mic.get_noise_level() if mic else 35.0
 
-            # 5. Build Payload
+            # 4. Build Payload
             payload = {
                 "device_id": DEVICE_ID,
-                "temperature": env_data.get("temperature", 22.0),
-                "humidity": env_data.get("humidity", 40.0),
-                "pressure": env_data.get("pressure", 1013.25),
-                "vocs": env_data.get("gas_res", 50000),
+                "temperature": temp if temp is not None else 22.0,
+                "humidity": hum if hum is not None else 40.0,
                 "light": lux,
-                "sound_amp": noise_db,
-                "particulates": pm_data.get("pm2_5", 5.0),
+                "sound_db": noise_db,
                 "timestamp_ms": int(time.time() * 1000)
             }
 
-            # 6. Output to console
-            print(f"📤 Sending: {json.dumps(payload)}")
-            sys.stdout.flush()
-
-            # 7. POST to Backend
+            # 5. Output to logger/console
+            print(f"📊 [TEMP: {payload['temperature']}°C | HUM: {payload['humidity']}% | LUX: {payload['light']} | SOUND: {payload['sound_db']}dB]")
+            
+            # 6. POST to Backend
             try:
                 res = requests.post(f"{BACKEND_URL}/api/sensor-data", json=payload, timeout=2)
                 if res.status_code != 200:
-                    print(f"⚠️ Backend returned error: {res.status_code}")
+                    print(f"⚠️ Backend error: {res.status_code}")
             except Exception as e:
                 print(f"❌ Network error: {e}")
 
             time.sleep(POLL_INTERVAL)
 
     except KeyboardInterrupt:
-        print("\nStopping...")
+        print("\n🛑 Stopping AirVita Suite...")
     finally:
-        if bme: bme.close()
+        if dht: dht.close()
         if light_sensor: light_sensor.close()
-        if pms: pms.close()
+        # MicrophoneHandler usually handles own cleanup if using sounddevice
+        print("✨ Cleanup complete.")
 
 if __name__ == "__main__":
     main()
