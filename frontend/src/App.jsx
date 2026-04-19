@@ -140,18 +140,6 @@ const ACTIVITY_META = {
     ],
     getStatus: v => v < 30 ? 'Restless' : v < 50 ? 'Disturbed' : v < 70 ? 'Adequate' : v < 85 ? 'Restful' : 'Optimal',
   },
-  study: {
-    label: 'Study Focus', icon: Book, color: '#f59e0b', sub: 'Cognitive Load',
-    unit: 'pts', iconColor: '#f59e0b', iconBg: '#fffbeb', iconBorder: '#fde68a',
-    ranges: [
-      { label: 'Distracted', max: 30, color: '#f43f5e', text: 'Environment hinders concentration.' },
-      { label: 'Unfocused', max: 50, color: '#f97316', text: 'Frequent attention breaks expected.' },
-      { label: 'Moderate', max: 70, color: '#f59e0b', text: 'Functional but not ideal for deep work.' },
-      { label: 'Focused', max: 85, color: '#10b981', text: 'Good lighting, low noise. Productive.' },
-      { label: 'Flow State', max: 100, color: '#059669', text: 'Peak conditions for deep learning.' },
-    ],
-    getStatus: v => v < 30 ? 'Distracted' : v < 50 ? 'Unfocused' : v < 70 ? 'Moderate' : v < 85 ? 'Focused' : 'Flow State',
-  },
   work: {
     label: 'Work Flow', icon: Briefcase, color: '#3b82f6', sub: 'Steady Productivity',
     unit: 'pts', iconColor: '#3b82f6', iconBg: '#eff6ff', iconBorder: '#bfdbfe',
@@ -437,7 +425,7 @@ export default function App() {
             ...data.reading,
             timestamp: data.reading.timestamp_ms || Date.now(),
             health: data.score, sleep: data.sleep_score,
-            study: data.study_score, work: data.work_score, fun: data.fun_score,
+            work: data.work_score, fun: data.fun_score,
           }
           return [...prev, entry].slice(-30)
         })
@@ -786,11 +774,11 @@ export default function App() {
                   <button
                     type="button"
                     onClick={fetchAnalysis}
-                    disabled={analysisLoading || !status?.room_context}
+                    disabled={analysisLoading}
                     style={{
                       padding: '8px', borderRadius: '10px', border: 'none', cursor: 'pointer',
                       background: 'transparent', color: '#94a3b8',
-                      opacity: (analysisLoading || !status?.room_context) ? 0.3 : 1,
+                      opacity: analysisLoading ? 0.5 : 1,
                     }}
                   >
                     <RefreshCw size={18} className={analysisLoading ? 'animate-spin' : ''} />
@@ -799,39 +787,7 @@ export default function App() {
 
                 {/* Analysis content */}
                 <div style={{ minHeight: '200px' }}>
-                  {!status?.room_context ? (
-                    <div style={{
-                      display: 'flex', flexDirection: 'column', alignItems: 'center',
-                      justifyContent: 'center', textAlign: 'center', padding: '32px 16px',
-                    }}>
-                      <div style={{
-                        width: '64px', height: '64px', borderRadius: '50%',
-                        background: '#f8fafc', display: 'flex', alignItems: 'center',
-                        justifyContent: 'center', marginBottom: '16px', color: '#94a3b8',
-                      }}>
-                        <Camera size={32} />
-                      </div>
-                      <h4 style={{ fontSize: '14px', fontWeight: 700, color: '#1e293b', margin: '0 0 4px 0' }}>
-                        Scanner Context Required
-                      </h4>
-                      <p style={{ fontSize: '12px', color: '#64748b', maxWidth: '240px', margin: '0 0 20px 0', lineHeight: 1.5 }}>
-                        The AI engine requires visual context. Please scan the room to unlock predictive analysis.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => setIsPairingOpen(true)}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: '8px',
-                          background: '#fff', color: '#1e293b',
-                          padding: '10px 20px', borderRadius: '14px', border: '1px solid #e2e8f0',
-                          fontSize: '12px', fontWeight: 700, cursor: 'pointer',
-                          boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-                        }}
-                      >
-                        <Camera size={16} /> Open Scanner Link
-                      </button>
-                    </div>
-                  ) : analysisLoading ? (
+                  {analysisLoading ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                       {[100, 90, 75].map((w, i) => (
                         <div key={i} style={{
@@ -1208,9 +1164,9 @@ export default function App() {
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div style={{ width: '18px', height: '18px', borderRadius: '4px', overflow: 'hidden' }}>
-                    <img src="/airvita-brand.png" alt="Logo" style={{ width: '100%', height: '100%' }} />
-                  </div>
+                    <div style={{ width: '18px', height: '18px', borderRadius: '4px', overflow: 'hidden' }}>
+                      <img src="/airvita-brand.png" alt="Logo" style={{ width: '100%', height: '100%' }} />
+                    </div>
                     <span style={{ fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                       Live Feed
                     </span>
@@ -1323,4 +1279,3 @@ export default function App() {
     </div>
   )
 }
-

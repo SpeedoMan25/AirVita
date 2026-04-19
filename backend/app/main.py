@@ -15,7 +15,6 @@ from app.gemini import generate_analysis
 from app.scoring import (
     calculate_room_health_score,
     calculate_sleep_score_with_breakdown,
-    calculate_study_score_with_breakdown,
     calculate_work_score_with_breakdown,
     calculate_fun_score_with_breakdown
 )
@@ -33,7 +32,6 @@ latest_status = RoomStatus(
     reading=None,
     score=0,
     sleep_score=0,
-    study_score=0,
     work_score=0,
     fun_score=0,
     last_updated=None,
@@ -274,7 +272,6 @@ def update_status_from_dict(payload_data: dict):
 
         # Calculate sub-activity scores with math internal
         sleep_res = calculate_sleep_score_with_breakdown(scores_reading)
-        study_res = calculate_study_score_with_breakdown(scores_reading)
         work_res = calculate_work_score_with_breakdown(scores_reading)
         fun_res = calculate_fun_score_with_breakdown(scores_reading)
 
@@ -282,12 +279,10 @@ def update_status_from_dict(payload_data: dict):
             reading=reading,
             score=final_score,
             sleep_score=sleep_res["score"],
-            study_score=study_res["score"],
             work_score=work_res["score"],
             fun_score=fun_res["score"],
             activity_breakdowns={
                 "sleep": sleep_res["breakdown"],
-                "study": study_res["breakdown"],
                 "work": work_res["breakdown"],
                 "fun": fun_res["breakdown"],
             },
@@ -358,7 +353,6 @@ async def analyze_room():
     scores = {
         "health": latest_status.score,
         "sleep": latest_status.sleep_score,
-        "study": latest_status.study_score,
         "work": latest_status.work_score,
         "fun": latest_status.fun_score
     }
