@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import './RoomScanner.css';
 
-const API_BASE = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || '');
+const API_BASE = '';
 
 export default function RoomScanner({ onClose }) {
   const videoRef = useRef(null);
