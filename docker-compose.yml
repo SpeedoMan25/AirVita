@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────
-# RoomPulse — Docker Compose
+# AirVita — Docker Compose
 # ─────────────────────────────────────────────
 # Quick start:
 #   docker-compose up --build
@@ -19,19 +19,20 @@
 services:
   backend:
     build: ./backend
-    container_name: roompulse-backend
+    container_name: airvita-backend
     ports:
       - "8000:8000"
     environment:
       - MOCK_SERIAL=true
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - HOST_IP=${HOST_IP:-127.0.0.1}
     volumes:
       - ./backend:/app
     restart: unless-stopped
 
   frontend:
     build: ./frontend
-    container_name: roompulse-frontend
+    container_name: airvita-frontend
     ports:
       - "5173:5173"
     environment:

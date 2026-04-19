@@ -17,6 +17,8 @@ class RoomClassifier:
     def __init__(self):
         self.model = None
         self.classes = []
+        self.obj_model = None
+        self.obj_classes = []
         self.history = deque(maxlen=25)
         self.stable_room = "Scanning..."
         self.preprocess = transforms.Compose([
@@ -94,8 +96,15 @@ class RoomClassifier:
 
         with open(cats_path) as f:
             self.classes = [line.strip().split(' ')[0][3:] for line in f]
+            
+        print("📥 Loading Object Detection model (MobileNetV3)...")
+        from torchvision.models.detection import fasterrcnn_mobilenet_v3_large_320_fpn, FasterRCNN_MobileNet_V3_Large_320_FPN_Weights
+        weights = FasterRCNN_MobileNet_V3_Large_320_FPN_Weights.DEFAULT
+        self.obj_model = fasterrcnn_mobilenet_v3_large_320_fpn(weights=weights)
+        self.obj_model.eval()
+        self.obj_classes = weights.meta["categories"]
         
-        print("✅ Room Classifier model loaded.")
+        print("✅ Room Classifier & Object models loaded.")
 
     def predict(self, base64_image: str):
         if self.model is None:
@@ -131,10 +140,29 @@ class RoomClassifier:
             if (vote_count / len(self.history)) > 0.6:
                 self.stable_room = most_common
                 
+            # --- Object Detection Pass ---
+            objects_detected = []
+            if self.obj_model is not None:
+                to_tensor = transforms.ToTensor()
+                obj_input = to_tensor(pil_img).unsqueeze(0)
+                with torch.no_grad():
+                    obj_out = self.obj_model(obj_input)[0]
+                
+                # Filter by threshold (0.5 for lightweight model)
+                for score, label_idx in zip(obj_out['scores'], obj_out['labels']):
+                    if score > 0.5:
+                        obj_name = self.obj_classes[label_idx.item()]
+                        # Ignore background or generic classes if needed, but COCO handles this nicely
+                        objects_detected.append(obj_name)
+                
+                # Unique list
+                objects_detected = list(set(objects_detected))
+                
             return {
                 "room": self.stable_room,
                 "confidence": round(float(conf), 2),
-                "scene": scene_name
+                "scene": scene_name,
+                "objects": objects_detected
             }
         except Exception as e:
             return {"error": str(e)}

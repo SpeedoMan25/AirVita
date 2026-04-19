@@ -1,4 +1,4 @@
-# 🌡️ RoomPulse — IoT Room Environment Monitor
+# 🌡️ AirVita — IoT Room Environment Monitor
 
 A full-stack IoT room environment monitoring system that reads sensor data from a Raspberry Pi Pico, processes it through a FastAPI backend, and displays a real-time dashboard via a React frontend.
 

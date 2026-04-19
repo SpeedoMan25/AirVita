@@ -13,11 +13,12 @@ import pandas as pd
 from app.models import RoomStatus, SensorReading, ScoreBreakdown
 from app.gemini import generate_analysis
 from app.scoring import (
+    calculate_room_health_score,
     calculate_sleep_score_with_breakdown,
-    calculate_study_score_with_breakdown,
     calculate_work_score_with_breakdown,
     calculate_fun_score_with_breakdown
 )
+from app.weather import weather_service
 
 # Configuration
 MODEL_DIR = Path(__file__).parent.parent / "model"
@@ -31,7 +32,6 @@ latest_status = RoomStatus(
     reading=None,
     score=0,
     sleep_score=0,
-    study_score=0,
     work_score=0,
     fun_score=0,
     last_updated=None,
@@ -42,7 +42,10 @@ latest_status = RoomStatus(
 AUTO_CYCLE = False 
 CURRENT_SCENARIO_INDEX = 0
 ACTIVE_SCENARIO_ID = "ideal" 
-CURRENT_SOURCE = "live" # 'live' or 'simulation'
+CURRENT_SOURCE = "live" # 'live', 'simulation', or 'weather'
+LAST_WEATHER_DATA = None
+LAST_WEATHER_FETCH_TIME = 0
+CURRENT_PAIRING_STATUS = "ready" # ready, connected, completed
 
 # Load Simulation Scenarios from JSON
 SCENARIOS_FILE = Path(__file__).parent / "scenarios.json"
@@ -135,6 +138,20 @@ def predict_score(data: dict) -> dict:
     }
 
 from app.cv import classifier
+import socket
+
+def get_lan_ip():
+    host_ip = os.getenv("HOST_IP")
+    if host_ip:
+        return host_ip
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return "127.0.0.1"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -157,25 +174,49 @@ async def lifespan(app: FastAPI):
     # Start background task for data generation
     generator_task = asyncio.create_task(run_data_generator())
     
+    # Print LAN-accessible URLs banner
+    ip = get_lan_ip()
+    frontend_url = f"https://{ip}:5173"
+    backend_url = f"http://{ip}:8000"
+    frontend_link = f"\033]8;;{frontend_url}\033\\{frontend_url}\033]8;;\033\\"
+    backend_link = f"\033]8;;{backend_url}\033\\{backend_url}\033]8;;\033\\"
+    
+    print("\n" + "─" * 30, flush=True)
+    print("🚀 AirVita Running\n", flush=True)
+    print("📱 Frontend:", flush=True)
+    print(f"{frontend_link}\n", flush=True)
+    print("⚙️ Backend:", flush=True)
+    print(f"{backend_link}", flush=True)
+    print("─" * 30 + "\n", flush=True)
+    
     yield
     generator_task.cancel()
 
 
 async def run_data_generator():
     """
-    Background job that generates mock data if CURRENT_SOURCE is 'simulation'.
+    Background job that generates data based on CURRENT_SOURCE.
     """
-    global latest_status, AUTO_CYCLE, CURRENT_SOURCE
+    global latest_status, AUTO_CYCLE, CURRENT_SOURCE, LAST_WEATHER_DATA, LAST_WEATHER_FETCH_TIME
     import random
     
     print("🛰️ Data Generator Task Started.")
     last_cycle_time = 0
     
     while True:
+        now = datetime.now(timezone.utc).timestamp()
+        
+        # Periodically refresh weather data (every 5 minutes)
+        if now - LAST_WEATHER_FETCH_TIME > 300:
+            try:
+                LAST_WEATHER_DATA = await weather_service.fetch_weather()
+                LAST_WEATHER_FETCH_TIME = now
+                print(f"🌍 Weather Updated: {LAST_WEATHER_DATA.get('location', 'Unknown')}")
+            except Exception as e:
+                print(f"Weather update error: {e}")
+
         if CURRENT_SOURCE == "simulation":
-            now = datetime.now(timezone.utc).timestamp()
-            
-            # 1. Update Scenario if Auto-cycling is ON
+            # ... existing simulation logic ...
             if AUTO_CYCLE and (now - last_cycle_time > 8):
                 global CURRENT_SCENARIO_INDEX, ACTIVE_SCENARIO_ID
                 CURRENT_SCENARIO_INDEX = (CURRENT_SCENARIO_INDEX + 1) % len(SIMULATION_SCENARIOS)
@@ -183,11 +224,8 @@ async def run_data_generator():
                 last_cycle_time = now
                 print(f"♻️ Auto-cycle: Switched to {ACTIVE_SCENARIO_ID}")
 
-            # 2. Get current base scenario
             s = next((scen for scen in SIMULATION_SCENARIOS if scen["id"] == ACTIVE_SCENARIO_ID), None)
-            
             if s:
-                # 3. Apply Jitter (±1.5%)
                 def jitter(val):
                     return val * random.uniform(0.985, 1.015)
 
@@ -196,14 +234,24 @@ async def run_data_generator():
                     "pressure": jitter(s["inputs"]["pressure"]), 
                     "light": jitter(s["inputs"]["light"]), 
                     "temperature": jitter(s["inputs"]["temperature"]),
-                    "sound_high": 10.0, 
-                    "sound_mid": 10.0, 
-                    "sound_low": 10.0, 
                     "sound_amp": jitter(s["inputs"]["noise"]),
                     "vocs": jitter(s["inputs"]["vocs"]), 
                     "particulates": jitter(s["inputs"]["particulates"])
                 }
                 update_status_from_dict(payload)
+        
+        elif CURRENT_SOURCE == "weather" and LAST_WEATHER_DATA:
+            # Map weather data to sensor payload
+            payload = {
+                "temperature": LAST_WEATHER_DATA.get("temperature_c", 20),
+                "humidity": LAST_WEATHER_DATA.get("humidity_pct", 50),
+                "pressure": LAST_WEATHER_DATA.get("pressure_hpa", 1013),
+                "light": 500 if 6 < datetime.now().hour < 18 else 10, # Mock light based on time
+                "sound_amp": 35.0, # Baseline noise
+                "vocs": LAST_WEATHER_DATA.get("voc_ppb", 0),
+                "particulates": LAST_WEATHER_DATA.get("pm25_ugm3", 5)
+            }
+            update_status_from_dict(payload)
         
         await asyncio.sleep(2)
 
@@ -217,22 +265,25 @@ def update_status_from_dict(payload_data: dict):
             timestamp_ms=int(datetime.now(timezone.utc).timestamp() * 1000)
         )
         
+        # Calculate base scores
+        scores_reading = results["reading"]
+        
+        # Use outdoor-aware health score
+        final_score = calculate_room_health_score(scores_reading, outdoor=LAST_WEATHER_DATA)
+
         # Calculate sub-activity scores with math internal
-        sleep_res = calculate_sleep_score_with_breakdown(results["reading"])
-        study_res = calculate_study_score_with_breakdown(results["reading"])
-        work_res = calculate_work_score_with_breakdown(results["reading"])
-        fun_res = calculate_fun_score_with_breakdown(results["reading"])
+        sleep_res = calculate_sleep_score_with_breakdown(scores_reading)
+        work_res = calculate_work_score_with_breakdown(scores_reading)
+        fun_res = calculate_fun_score_with_breakdown(scores_reading)
 
         latest_status = RoomStatus(
             reading=reading,
-            score=results["final_score"],
+            score=final_score,
             sleep_score=sleep_res["score"],
-            study_score=study_res["score"],
             work_score=work_res["score"],
             fun_score=fun_res["score"],
             activity_breakdowns={
                 "sleep": sleep_res["breakdown"],
-                "study": study_res["breakdown"],
                 "work": work_res["breakdown"],
                 "fun": fun_res["breakdown"],
             },
@@ -242,6 +293,8 @@ def update_status_from_dict(payload_data: dict):
                 pm25_penalty=results["pm25_penalty"],
                 final_score=results["final_score"]
             ),
+            room_context=latest_status.room_context,
+            pairing_status=CURRENT_PAIRING_STATUS,
             last_updated=datetime.now(timezone.utc),
             connected=True
         )
@@ -251,7 +304,7 @@ def update_status_from_dict(payload_data: dict):
         print("🔌 Production Mode: Waiting for serial data...")
         pass
 
-app = FastAPI(title="RoomPulse Hybrid IAQ Backend", lifespan=lifespan)
+app = FastAPI(title="AirVita Hybrid IAQ Backend", lifespan=lifespan)
 
 # Add CORS middleware
 app.add_middleware(
@@ -264,11 +317,35 @@ app.add_middleware(
 
 @app.get("/")
 async def root():
-    return {"service": "RoomPulse API", "status": "running"}
+    return {"service": "AirVita API", "status": "running"}
 
 @app.get("/api/current-status", response_model=RoomStatus)
 async def current_status():
+    global latest_status
+    latest_status.pairing_status = CURRENT_PAIRING_STATUS
     return latest_status
+
+class PairingStatusUpdate(BaseModel):
+    status: str
+
+@app.post("/api/pairing/status")
+async def update_pairing_status(update: PairingStatusUpdate):
+    global CURRENT_PAIRING_STATUS
+    # Basic validation
+    if update.status not in ["ready", "connected", "completed"]:
+        raise HTTPException(status_code=400, detail="Invalid status")
+    
+    CURRENT_PAIRING_STATUS = update.status
+    print(f"🔄 Pairing Status Updated: {CURRENT_PAIRING_STATUS}")
+    return {"status": "success", "pairing_status": CURRENT_PAIRING_STATUS}
+
+@app.post("/api/pairing/reset")
+async def reset_pairing():
+    global CURRENT_PAIRING_STATUS, latest_status
+    CURRENT_PAIRING_STATUS = "ready"
+    latest_status.room_context = None
+    print("🧹 Pairing/Context Reset")
+    return {"status": "success"}
 
 import socket
 
@@ -291,17 +368,23 @@ async def analyze_room():
     """
     if not latest_status.reading:
         return {"summary": "Waiting for sensor data...", "flags": []}
+        
+    if not latest_status.room_context:
+        return {
+            "summary": "LOCKED: Please use the Room Scanner to capture environmental context before accessing Neural AI insights.",
+            "flags": ["Missing Visual Context"]
+        }
     
     # Format the reading for Gemini
     reading_dict = latest_status.reading.model_dump()
     scores = {
         "health": latest_status.score,
         "sleep": latest_status.sleep_score,
-        "study": latest_status.study_score,
         "work": latest_status.work_score,
         "fun": latest_status.fun_score
     }
-    analysis = generate_analysis(reading_dict, scores)
+    room_ctx = latest_status.room_context.model_dump()
+    analysis = generate_analysis(reading_dict, scores, room_ctx)
     return analysis
 
 @app.post("/api/sensor-data")
@@ -338,6 +421,11 @@ async def select_scenario(selection: ScenarioSelect):
         print("🔌 Source Switched: LIVE (Hardware)")
         return {"status": "success", "source": "live"}
 
+    if selection.id == "weather":
+        CURRENT_SOURCE = "weather"
+        print("🌍 Source Switched: WEATHER (Local Outdoor)")
+        return {"status": "success", "source": "weather"}
+
     scenario = next((s for s in SIMULATION_SCENARIOS if s["id"] == selection.id), None)
     if not scenario:
         raise HTTPException(status_code=404, detail="Scenario not found")
@@ -367,4 +455,12 @@ async def scan_room(payload: dict):
     result = classifier.predict(payload["image"])
     if "error" in result:
         raise HTTPException(status_code=500, detail=result["error"])
+        
+    if result.get("confidence", 0) > 0.60 or payload.get("force_lock"):
+        from app.models import RoomContext
+        latest_status.room_context = RoomContext(
+            room_type=result.get("room", "Unknown"),
+            identified_objects=result.get("objects", [])
+        )
+        
     return result

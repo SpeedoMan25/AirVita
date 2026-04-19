@@ -1,5 +1,5 @@
 """
-RoomPulse — Raspberry Pi Pico Edge Code (MicroPython)
+AirVita — Raspberry Pi Pico Edge Code (MicroPython)
 Hardware Integrated Version (I2C, UART, I2S, ADC, NeoPixel)
 """
 

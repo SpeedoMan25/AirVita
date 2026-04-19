@@ -97,40 +97,6 @@ SLEEP_SENSOR_CONFIG: Dict[str, dict] = {
 }
 
 
-# Study-specific scoring configuration
-# Focused on high light levels, low noise, and cool temperatures for alertness
-STUDY_SENSOR_CONFIG: Dict[str, dict] = {
-    "temperature_c": {
-        "ideal_low": 19.0, "ideal_high": 22.0,
-        "abs_min": 15.0,   "abs_max": 28.0,
-        "weight": 0.15,
-    },
-    "humidity_pct": {
-        "ideal_low": 35.0, "ideal_high": 50.0,
-        "abs_min": 10.0,   "abs_max": 80.0,
-        "weight": 0.05,
-    },
-    "light_lux": {
-        "ideal_low": 300.0, "ideal_high": 700.0,
-        "abs_min": 50.0,    "abs_max": 2000.0,
-        "weight": 0.35,
-    },
-    "noise_db": {
-        "ideal_low": 20.0, "ideal_high": 45.0,
-        "abs_min": 10.0,   "abs_max": 75.0,
-        "weight": 0.25,
-    },
-    "pm25_ugm3": {
-        "ideal_low": 0.0,  "ideal_high": 12.0,
-        "abs_min": 0.0,    "abs_max": 50.0,
-        "weight": 0.10,
-    },
-    "voc_ppb": {
-        "ideal_low": 0.0,  "ideal_high": 200.0,
-        "abs_min": 0.0,    "abs_max": 1000.0,
-        "weight": 0.10,
-    },
-}
 
 
 # Work-specific scoring configuration
@@ -229,11 +195,42 @@ def _sub_score(value: float, ideal_low: float, ideal_high: float,
         return max(0.0, 100.0 * (abs_max - value) / span)
 
 
-def calculate_room_health_score(readings: dict) -> int:
+def calculate_room_health_score(readings: dict, outdoor: dict = None) -> int:
     """
     Calculate the Room Health Score (1–99) from raw sensor readings.
+    Optionally refines the score based on outdoor comparative conditions.
     """
-    return _calculate_weighted_score(readings, SENSOR_CONFIG)
+    base_score = _calculate_weighted_score(readings, SENSOR_CONFIG)
+    
+    if outdoor:
+        return apply_outdoor_refinements(base_score, readings, outdoor)
+    return base_score
+
+
+def apply_outdoor_refinements(indoor_score: int, indoor_readings: dict, outdoor_readings: dict) -> int:
+    """
+    Applies comparative adjustments to the room score based on outdoor conditions.
+    Example: Rewarding effective air filtration when outdoor AQI is poor.
+    """
+    bonus = 0
+    
+    # 1. Protection Bonus (AQI)
+    outdoor_pm = outdoor_readings.get("pm25_ugm3", 0)
+    indoor_pm = indoor_readings.get("pm25_ugm3", 0)
+    
+    if outdoor_pm > 35 and indoor_pm < 15:
+        # Significant delta, room is an effective shelter
+        bonus += 5
+    elif outdoor_pm > 25 and indoor_pm < 12:
+        bonus += 3
+        
+    # 2. Thermal Stability Bonus
+    outdoor_temp = outdoor_readings.get("temperature_c", 22)
+    indoor_temp = indoor_readings.get("temperature_c", 22)
+    if (outdoor_temp < 10 or outdoor_temp > 30) and (20 <= indoor_temp <= 24):
+        bonus += 2
+
+    return min(99, indoor_score + bonus)
 
 
 def calculate_sleep_score_with_breakdown(readings: dict) -> Dict:
@@ -243,11 +240,6 @@ def calculate_sleep_score_with_breakdown(readings: dict) -> Dict:
     return calculate_weighted_score_with_breakdown(readings, SLEEP_SENSOR_CONFIG)
 
 
-def calculate_study_score_with_breakdown(readings: dict) -> Dict:
-    """
-    Calculate the Study Conditions Score (1–99) with breakdown.
-    """
-    return calculate_weighted_score_with_breakdown(readings, STUDY_SENSOR_CONFIG)
 
 
 def calculate_work_score_with_breakdown(readings: dict) -> Dict:
