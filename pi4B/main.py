@@ -29,9 +29,24 @@ BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 DEVICE_ID = os.getenv("DEVICE_ID", hex(uuid.getnode())) # MAC address based ID
 
 print(f"📡 Device ID: {DEVICE_ID}")
+print(f"🔗 Target Backend: {BACKEND_URL}")
 
 def setup():
     print(f"Initializing AirVita (DHT11 Only) on GPIO {DHT_PIN}...")
+    
+    # 1. Network Connectivity Check
+    try:
+        print("🔍 Checking backend connectivity...")
+        test_res = requests.get(f"{BACKEND_URL}/api/monitors", timeout=3)
+        if test_res.status_code == 200:
+            print("✅ Successfully connected to AirVita backend!")
+        else:
+            print(f"⚠️ Backend reached but returned status: {test_res.status_code}")
+    except Exception as e:
+        print(f"❌ Cannot reach backend at {BACKEND_URL}.")
+        print(f"   Error: {e}")
+        print("   Make sure the IP is correct and Tailscale is connected on both units.")
+
     dht_sensor = None
     if adafruit_dht:
         try:
@@ -55,6 +70,7 @@ def loop(dht_sensor):
                     hum_pct = dht_sensor.humidity
                 except RuntimeError as e:
                     # Reading DHT can be finicky on Linux, just retry
+                    print("⌛ Sensor reading failed, retrying...")
                     pass
             
             # If we have a successful read, output JSON and send to backend
