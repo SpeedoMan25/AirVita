@@ -90,7 +90,7 @@
 
 .app__tech-toggle:hover {
   color: var(--accent-indigo);
-  transform: rotate(45deg) scale(1.1);
+  border-color: var(--accent-indigo);
   box-shadow: var(--shadow-md);
 }
 
@@ -329,11 +329,10 @@
 }
 
 /* Optional: Subtle push when drawers are open */
-.app--tech-open .app__content-wrapper {
-  transform: translateX(40px);
-}
+/* Removed content shifting to keep UI stable under cursor */
+.app--tech-open .app__content-wrapper,
 .app--drawer-open .app__content-wrapper {
-  transform: translateX(-40px);
+  transform: none;
 }
 
 /* ── Hero Row (Gauge + AI Insight) ── */
