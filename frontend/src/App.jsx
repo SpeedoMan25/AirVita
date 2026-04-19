@@ -11,9 +11,7 @@ import RoomScanner from './components/RoomScanner'
 import MobilePairing from './components/MobilePairing'
 
 
-const API_BASE = import.meta.env.DEV
-  ? `http://${window.location.hostname}:8000`
-  : import.meta.env.VITE_API_URL || '';
+const API_BASE = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || '');
 const POLL_INTERVAL_MS = 2000
 
 /* ═══════════════════════════════════════════════════
@@ -453,9 +451,18 @@ export default function App() {
 
   const fetchScenarios = useCallback(async () => {
     try {
+      console.log(`📡 Fetching scenarios from: ${API_BASE}/api/scenarios`)
       const res = await fetch(`${API_BASE}/api/scenarios`)
-      if (res.ok) setScenarios(await res.json())
-    } catch (err) { /* silently fail */ }
+      if (res.ok) {
+        const data = await res.json()
+        console.log(`✅ Loaded ${data.length} simulations.`)
+        setScenarios(data)
+      } else {
+        console.warn(`⚠️ Scenarios fetch failed with status: ${res.status}`)
+      }
+    } catch (err) {
+      console.error('❌ Failed to fetch scenarios:', err)
+    }
   }, [])
 
   const selectScenario = async (id) => {

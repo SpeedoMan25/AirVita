@@ -2,9 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import './MobilePairing.css';
 
-const API_BASE = import.meta.env.DEV
-  ? `http://${window.location.hostname}:8000`
-  : import.meta.env.VITE_API_URL || '';
+const API_BASE = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || '');
 
 export default function MobilePairing({ onClose }) {
   const [info, setInfo] = useState({ ip: 'Loading...', url: '' });
