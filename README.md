@@ -1,41 +1,35 @@
-# 🌡️ AirVita — IoT Room Environment Monitor
+# AirVita: IoT Room Environment Monitor
 
-A full-stack IoT room environment monitoring system that reads sensor data from a Raspberry Pi Pico, processes it through a FastAPI backend, and displays a real-time dashboard via a React frontend.
+AirVita is a comprehensive, full-stack Internet of Things (IoT) room environment monitoring system. It leverages a Raspberry Pi Pico for edge sensor data collection, processes the telemetry through a highly concurrent FastAPI backend, and visualizes real-time environmental metrics via a responsive React frontend dashboard.
 
-## Architecture
+## System Architecture
 
-```
-┌──────────────┐    USB/Serial    ┌──────────────────┐    HTTP/REST    ┌──────────────────┐
-│  Pico (Edge) │ ──────────────► │  FastAPI Backend  │ ◄────────────► │  React Frontend  │
-│  MicroPython │   JSON payload  │  Serial Listener  │   /api/...     │  Vite Dashboard  │
-│  Sensors     │                 │  Health Scoring   │                │  Live Score UI   │
-└──────────────┘                 └──────────────────┘                └──────────────────┘
+The architecture follows a decoupled, three-tier model ensuring low latency and high reliability:
+
+```mermaid
+flowchart LR
+    Pico["Raspberry Pi Pico (Edge)\nMicroPython\nSensors"] -- USB/Serial JSON --> Backend["FastAPI Backend\nSerial Listener\nHealth Scoring"]
+    Backend -- HTTP/REST --> Frontend["React Frontend\nVite Dashboard\nLive UI"]
 ```
 
 ## Directory Structure
 
-```
+```text
 HackAugie/
-├── pico/               # MicroPython code for the Raspberry Pi Pico
-│   └── main.py         # Sensor reading & serial output (mock mode included)
-├── backend/            # FastAPI server + serial listener
+├── pico/               # MicroPython edge firmware
+│   └── main.py         # Sensor reading and serial output integration
+├── backend/            # FastAPI server and serial listener
 │   ├── app/
-│   │   ├── main.py     # FastAPI application entry point
-│   │   ├── serial_reader.py   # PySerial USB listener
-│   │   ├── scoring.py  # Room Health Score algorithm (1–99)
-│   │   └── models.py   # Pydantic data models
+│   │   ├── main.py     # Application entry point
+│   │   ├── serial_reader.py # PySerial USB listener
+│   │   ├── scoring.py  # Health Score algorithmic engine
+│   │   └── models.py   # Pydantic data validation models
 │   ├── requirements.txt
 │   └── Dockerfile
-├── frontend/           # React + Vite dashboard
+├── frontend/           # React and Vite dashboard UI
 │   ├── src/
-│   │   ├── App.jsx
-│   │   ├── App.css
-│   │   ├── components/
-│   │   │   ├── ScoreGauge.jsx
-│   │   │   ├── ScoreGauge.css
-│   │   │   ├── SensorCard.jsx
-│   │   │   └── SensorCard.css
-│   │   └── main.jsx
+│   │   ├── components/ # Reusable UI components
+│   │   └── main.jsx    # React entry point
 │   ├── index.html
 │   ├── package.json
 │   ├── vite.config.js
@@ -44,27 +38,35 @@ HackAugie/
 └── README.md
 ```
 
-## Quick Start
+## Quick Start Guide
 
 ### Prerequisites
-- Python 3.11+
-- Node.js 18+
-- Docker & Docker Compose (optional)
+- Python 3.11 or newer
+- Node.js 18 or newer
+- Docker and Docker Compose (Optional, for containerized deployments)
 
-### 1. Run the Backend
+### 1. Initializing the Backend
+
+Navigate to the backend directory and install the required Python dependencies:
 
 ```bash
 cd backend
 pip install -r requirements.txt
+```
 
-# Without a Pico connected (uses mock data):
+Start the backend server. You can run it with mock data if a Pico is not connected:
+
+```bash
+# Execute with mock data generator:
 MOCK_SERIAL=true uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
-# With a Pico connected:
+# Execute with physical Pico connected (replace COM3 with your serial port):
 SERIAL_PORT=COM3 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### 2. Run the Frontend
+### 2. Initializing the Frontend
+
+Navigate to the frontend directory, install dependencies, and start the development server:
 
 ```bash
 cd frontend
@@ -72,37 +74,56 @@ npm install
 npm run dev
 ```
 
-Open **http://localhost:5173** in your browser.
+The frontend application will be accessible at `http://localhost:5173`.
 
-### 3. Run with Docker Compose
+### 3. Containerized Deployment (Docker)
+
+To deploy the entire stack using Docker Compose:
 
 ```bash
 docker-compose up --build
 ```
 
-> **Windows USB Passthrough:** Docker Desktop on Windows does not natively support USB passthrough.
-> Use `MOCK_SERIAL=true` in `docker-compose.yml`, or run the backend natively with `SERIAL_PORT=COM3`.
->
-> **Linux USB Passthrough:** Uncomment the `devices` section in `docker-compose.yml` to map `/dev/ttyACM0`.
+> [!WARNING]
+> **Windows USB Passthrough Constraints**
+> Docker Desktop on Windows does not natively support USB passthrough. When using Windows, either utilize `MOCK_SERIAL=true` within `docker-compose.yml` or run the backend natively specifying the `SERIAL_PORT`.
 
-### 4. Flash the Pico
+> [!NOTE]
+> **Linux USB Passthrough**
+> For Linux hosts, uncomment the `devices` section in `docker-compose.yml` to correctly map the serial device (e.g., `/dev/ttyACM0`).
 
-Copy `pico/main.py` to your Raspberry Pi Pico running MicroPython. It will immediately begin streaming JSON sensor data over USB serial.
+### 4. Edge Device Provisioning
 
-## Room Health Score
+Deploy the firmware to your Raspberry Pi Pico by copying `pico/main.py` onto the device. Ensure it is running MicroPython. Upon booting, the Pico will autonomously begin streaming JSON-formatted sensor telemetry over USB serial.
 
-The score ranges from **1** (hazardous) to **99** (ideal) and is computed as a weighted average of individual sensor sub-scores:
+## Environmental Health Scoring Algorithm
 
-| Sensor         | Weight | Ideal Range           |
-|----------------|--------|-----------------------|
-| Temperature    | 20%    | 20–24 °C              |
-| Humidity       | 15%    | 40–60 %RH             |
-| Light Level    | 10%    | 300–500 lux           |
-| Noise Level    | 15%    | 0–40 dB               |
-| Air Pressure   | 10%    | 1000–1025 hPa         |
-| Particles      | 15%    | 0–35 µg/m³ (PM2.5)    |
-| VOCs           | 15%    | 0–300 ppb             |
+The system computes a composite Room Health Score ranging from 1 (Hazardous) to 99 (Optimal). This metric is calculated as a weighted average of individual sensor sub-scores based on established ideal environmental ranges.
+
+| Sensor Metric  | Weighting | Optimal Range |
+| :--- | :--- | :--- |
+| Temperature | 20% | 20 to 24 °C |
+| Humidity | 15% | 40 to 60 %RH |
+| Ambient Light | 10% | 300 to 500 lux |
+| Acoustic Noise | 15% | 0 to 40 dB |
+| Barometric Pressure | 10% | 1000 to 1025 hPa |
+| Particulate Matter (PM2.5)| 15% | 0 to 35 µg/m³ |
+| Volatile Organic Compounds| 15% | 0 to 300 ppb |
+
+## Related Documentation
+
+For detailed information on specific modules, refer to the following documentation:
+
+- **[Deployment Guide](file:///c:/Projects/HackAugie/DEPLOYMENT.md)**: Container orchestration and startup scripts.
+- **[API Reference](file:///c:/Projects/HackAugie/API.md)**: Data schema for the `/api/sensor-data` endpoint.
+- **[Backend Service](file:///c:/Projects/HackAugie/backend/README.md)**: FastAPI REST architecture and environment variables.
+- **[Frontend Dashboard](file:///c:/Projects/HackAugie/frontend/README.md)**: React SPA architecture and UI layout.
+- **[Machine Learning](file:///c:/Projects/HackAugie/backend/model/README.md)**: The scoring methodology and MLP training.
+- **[Computer Vision Scanner](file:///c:/Projects/HackAugie/scanner/README.md)**: The ResNet18 room context classifier.
+- **[Pico Firmware](file:///c:/Projects/HackAugie/pico/README.md)**: Production edge code for the Raspberry Pi Pico.
+- **[Pi 4B Firmware](file:///c:/Projects/HackAugie/pi4B/README.md)**: Autonomous edge code for the Pi 4B node.
+- **[Pico Serial Bridge](file:///c:/Projects/HackAugie/PICO_BRIDGE.md)**: Middleware for routing Pico serial data over HTTP.
 
 ## License
 
-MIT
+This project is licensed under the MIT License.

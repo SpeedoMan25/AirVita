@@ -1,48 +1,55 @@
-# Pico Test V2: Modular Hardware Suite
+# Pico Hardware Validation Suite (Iteration V2)
 
-This is the second iteration of the testing suite, redesigned for a Pico breakout board with shared power rails and a rich sensor array.
+This documentation details the second iteration of the testing suite. This revision has been engineered for a standardized Pico breakout board utilizing shared power distribution rails and an expanded array of high-precision environmental sensors.
 
-## 🔌 Hardware Architecture
+## Hardware Architecture Specifications
 
-| Component | Protocol | Pin Mapping | physical Pin | Power |
+| Hardware Peripheral | Communication Protocol | Logic Pin Mapping | Physical Pin Allocation | Required Operating Voltage |
 | :--- | :--- | :--- | :--- | :--- |
-| **I2C LCD** | I2C (0x27) | SDA:GP0, Scl:GP1 | 1, 2 | 5V |
-| **NeoPixels (x16)** | One-Wire | DIN: GP2 | 4 | 5V |
-| **GY-302 (Light)** | I2C (0x23) | SDA:GP0, Scl:GP1 | 1, 2 | 3.3V |
-| **BME688 (Env)** | I2C (0x76/77)| SDA:GP0, Scl:GP1 | 1, 2 | 3.3V |
-| **PMS5003 (Air)** | UART1 | TX:GP4, RX:GP5 | 6, 7 | 5V |
-| **INMP441 (Mic)** | I2S | SCK:16, WS:17, SD:18 | 21, 22, 24 | 3.3V |
-| **Buzzer (Active)** | Digital | Signal: GP15 | 20 | 3.3V |
+| **I2C LCD Display** | I2C (Address: 0x27) | SDA: GP0, SCL: GP1 | Pins 1, 2 | 5.0V |
+| **NeoPixel Array (x16)** | Proprietary One-Wire | DIN: GP2 | Pin 4 | 5.0V |
+| **GY-302 (Ambient Light)**| I2C (Address: 0x23) | SDA: GP0, SCL: GP1 | Pins 1, 2 | 3.3V |
+| **BME688 (Environment)** | I2C (Address: 0x76/0x77)| SDA: GP0, SCL: GP1 | Pins 1, 2 | 3.3V |
+| **PMS5003 (Particulates)**| UART1 | TX: GP4, RX: GP5 | Pins 6, 7 | 5.0V |
+| **INMP441 (Microphone)** | I2S | SCK: GP16, WS: GP17, SD: GP18 | Pins 21, 22, 24 | 3.3V |
+| **Active Buzzer** | Digital Logic | Signal: GP15 | Pin 20 | 3.3V |
 
 ---
 
-## 🚀 Running the Tests
+## Execution Directives
 
-### Phase 1-3: Core UI
-- **LCD Only:** `python -m mpremote connect COM4 run pico/test/v2/lcd_test.py`
-- **NeoPixels:** `python -m mpremote connect COM4 run pico/test/v2/neopixel_test.py`
-- **Integrated UI:** `python -m mpremote connect COM4 run pico/test/v2/integrated_test.py`
+> [!NOTE]
+> All execution commands assume the Raspberry Pi Pico is enumerated on the host system as `COM4`. Adjust the port parameter as necessary for your specific environment.
 
-### Phase 4-5: Light & Automation
-- **Light Sensor:** `python -m mpremote connect COM4 run pico/test/v2/light_test_v2.py`
-- **Master V2:** `python -m mpremote connect COM4 run pico/test/v2/master_v2.py`
+### Phase 1-3: Core User Interface Validation
+- **Display Subsystem:** `python -m mpremote connect COM4 run pico/test/v2/lcd_test.py`
+- **Lighting Subsystem:** `python -m mpremote connect COM4 run pico/test/v2/neopixel_test.py`
+- **UI Integration:** `python -m mpremote connect COM4 run pico/test/v2/integrated_test.py`
 
-### Phase 6: Digital Audio (Active)
-- **Microphone:** `python -m mpremote connect COM4 run pico/test/v2/mic_test.py`
+### Phase 4-5: Illumination and Automation Logic
+- **Photometric Sensor:** `python -m mpremote connect COM4 run pico/test/v2/light_test_v2.py`
+- **V2 Master Controller:** `python -m mpremote connect COM4 run pico/test/v2/master_v2.py`
 
-### Phase 7-8: Atmosphere & Environmental
-- **Air Quality:** `python -m mpremote connect COM4 run pico/test/v2/air_test_v2.py`
-- **Environment:** `python -m mpremote connect COM4 run pico/test/v2/bme_test.py` 
-  *(Measures Temp, Hum, Pressure, and VOC Gas Resistance. Uses a custom driver that handles NVM calibration logic).*
+### Phase 6: Digital Audio Acquisition
+- **I2S Microphone:** `python -m mpremote connect COM4 run pico/test/v2/mic_test.py`
 
-### Phase 9: Alerts & Simulations
-- **Buzzer:** `python -m mpremote connect COM4 run pico/test/v2/buzzer_test.py`
-- **Simulation:** `python -m mpremote connect COM4 run pico/test/v2/bomb_sim.py`
-  *(Dramatic 30-second countdown using LCD, LEDs, and Buzzer)*
+### Phase 7-8: Atmospheric and Environmental Telemetry
+- **Air Quality Particulates:** `python -m mpremote connect COM4 run pico/test/v2/air_test_v2.py`
+- **Comprehensive Environment:** `python -m mpremote connect COM4 run pico/test/v2/bme_test.py`
+  *(Captures temperature, relative humidity, barometric pressure, and VOC gas resistance. Operates via a custom driver implementing non-volatile memory calibration compensation logic).*
+
+### Phase 9: Alert Systems and Operational Simulations
+- **Audible Alerts:** `python -m mpremote connect COM4 run pico/test/v2/buzzer_test.py`
+- **System Simulation:** `python -m mpremote connect COM4 run pico/test/v2/bomb_sim.py`
+  *(Executes a critical alert simulation sequence utilizing synchronized UI, LED array, and auditory responses).*
 
 ---
 
-## 🛠 Troubleshooting
-- **I2C Bus Not Found?** The BME688 requires `CS` tied to 3.3V and `SDO` tied to GND for stable I2C 0x76 operation.
-- **PMS5003 No Data?** Ensure UART RX/TX are crossed correctly (Pico RX ➡ Sensor TX).
-- **Audio Zeros?** Check I2S wiring stability on the breadboard; I2S is very sensitive to loose connections.
+## Diagnostic and Troubleshooting Procedures
+
+> [!WARNING]
+> Proper wiring is critical. Deviations from the documented pinouts or voltages may result in component degradation or failure.
+
+- **I2C Bus Enumeration Failures:** The BME688 module strictly requires the `CS` (Chip Select) pin tied to 3.3V and the `SDO` pin tied to GND to guarantee stable operation at I2C address 0x76.
+- **PMS5003 UART Data Loss:** Verify that the UART transmission lines are correctly crossed (Pico RX is connected to Sensor TX, and vice versa).
+- **Audio Signal Integrity:** The I2S protocol is highly susceptible to capacitance and loose connections. Ensure breadboard wiring is completely secure and wires are kept as short as feasible to prevent data corruption.
