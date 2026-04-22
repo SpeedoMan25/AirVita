@@ -1,0 +1,438 @@
+                         2016 product data manual of PLANTOWER
+
+
+
+           Digital universal particle concentration sensor
+                         PMS5003 series data manual
+
+Writer               Zhou Yong              Version              V2.3
+
+Verifier             Zheng Haoxin           Date                 2016-06-01
+
+
+
+
+Main characteristics
+
+ Zero false alarm rate
+
+ Real-time response
+
+ Correct data
+
+ Minimum distinguishable particle diameter :0.3 micrometer
+
+ High anti-interference performance because of the patent structure of six
+  sides shielding
+
+ Optional direction of air inlet and outlet in order to adapt the different
+  design
+                         2016 product data manual of PLANTOWER
+
+
+Overview
+ PMS5003 is a kind of digital and universal particle concentration sensor,
+ which can be used to obtain the number of suspended particles in the air,
+ i.e. the concentration of particles, and output them in the form of digital
+ interface. This sensor can be inserted into variable instruments related to
+ the concentration of suspended particles in the air or other environmental
+ improvement equipments to provide correct concentration data in time.
+
+
+
+
+Working principle
+Laser scattering principle is used for such sensor, i.e. produce scattering by
+using laser to radiate suspending particles in the air, then collect scattering
+light in a certain degree, and finally obtain the curve of scattering light change
+with time. In the end, equivalent particle diameter and the number of particles
+with different diameter per unit volume can be calculated by microprocessor
+based on MIE theory. Please find the functional diagram of each part of sensor
+from Figure 1 as follows.
+
+
+
+
+                             Figure 1 Functional block diagram of sensor
+                            2016 product data manual of PLANTOWER
+
+
+
+Technical Index
+             Parameter          Index                                        unit
+
+Range of measurement            0.3~1.0；1.0~2.5；2.5~10              Micrometer（μ m）
+
+Counting Efficiency             50%@0.3μ m        98%@>=0.5μ m
+
+Effective Range（PM2.5           0~500                               μ g/m³
+
+standard）
+
+Maximum Range（PM2.5             ≥1000                               μ g/m³
+
+standard）*
+
+Resolution                      1                                   μ g/m³
+
+Maximum Consistency Error       ±10%@100~500μ g/m³
+
+(PM2.5 standard data)*          ±10μ g/m³@0~100μ g/m³
+
+Standard Volume                 0.1                                 Litre（L）
+
+Single Response Time            ＜1                                  Second（s）
+
+Total Response Time             ≤10                                 Second（s）
+
+DC Power Supply                 Typ:5.0   Min:4.5 Max: 5.5          Volt（V）
+
+Active Current                  ≤100                                Milliampere（mA）
+
+Standby Current                 ≤200                                Microampere（μ A）
+
+Interface Level                 L <0.8 @3.3 H >2.7@3.3              Volt（V）
+
+Working Temperature Range       -10~+60                              ℃
+
+Working Humidity Range          0~99%
+
+Storage Temperature Range       -40~+80                              ℃
+
+MTTF                            ≥3                                  Year（Y）
+
+Physical Size                   50×38×21                            Millimeter（mm）
+
+Note 1: Maximum range means that the highest output value of the PM2.5 standard
+data is not less than 1000.
+Note 2:“PM2.5 standard data” is the “data2” in the appendix.
+                        2016 product data manual of PLANTOWER
+
+
+Pin Definition
+
+
+
+
+                       PIN1
+          Figure 2   Connector Definition
+
+
+
+PIN1          VCC             Positive power 5V
+
+PIN2          GND             Negative power
+
+PIN3          SET             Set pin /TTL l e v e l @3.3V，high level or
+                              suspending is normal working status, while
+                              low level is sleeping mode.
+PIN4          RX              Serial port receiving pin/TTL level@3.3V
+PIN5          TX              Serial port sending pin/TTL level@3.3V
+
+PIN6          RESET           Module reset signal /TTL level@3.3V，low
+                              reset.
+
+PIN7/8        NC
+
+
+
+
+ Output result
+ Mainly output as the quality and number of each particles with different size
+ per unit volume, the unit volume of particle number is 0.1L and the unit of
+ mass concentration is μ g/m³.
+ There are two options for digital output: passive and active. Default mode
+ is active after power up. In this mode sensor would send serial data to the
+ host automatically .The active mode is divided into two sub-modes: stable
+ mode and fast mode. If the concentration change is small the sensor
+ would run at stable mode with the real interval of 2.3s.And if the change is
+ big the sensor would be changed to fast mode automatically with the
+ interval of 200~800ms, the higher of the concentration, the shorter of the
+ interval.
+                       2016 product data manual of PLANTOWER
+
+
+
+Typical Circuit
+
+
+
+
+                    Figure 3     Typical Circuit
+
+
+
+
+Typical Output Characteristic
+Definition of axis Y: PM2.5 concentration , unit: μ g/m³
+Definition of axis X: number of samples, unit: time
+
+
+
+
+                    Figure 4-1     Consistency at 20℃
+     2016 product data manual of PLANTOWER
+
+
+
+
+  Figure 4-2     Consistency at 43℃
+
+
+
+
+Figure 4-3     Consistency at -5℃
+                        2016 product data manual of PLANTOWER
+
+
+
+
+        Figure 4-4    Consistency after 30 days’ running
+
+
+
+
+Relationship of Temperature and Consistency
+Definition of axis Y: Maximum Error Modulus(%)
+Definition of axis X: Temperature(℃)
+
+
+
+
+        Figure 5     Consistency Vs Temperature
+                         2016 product data manual of PLANTOWER
+
+
+
+    Endurance Characteristics
+No      Item           Test Method                               Characteristics     n
+                                                                                     C
+1       Long Running   1. 10 ㎡ closed Lab,，20~25℃，               10 samples during   n=30
+                          humidity 30%~70%，particle              0~500μ g/m³         C=0
+                          generator and air cleaner
+                       2. DC 5V power supply                     0~100μ g/m³
+                       3. Check consistency after 720            Maximum Error≤
+                          hours’ running                         ±15μ g/m³
+2       High           1. 10 ㎡ constant temperature Lab                              n=10
+        Temperature    2. 43℃，humidity 70%，                      100~500μ g/m³       C=0
+        Operation      3. particle generator and air             Maximum Error≤
+                          cleaner                                ±15%
+                       4. DC 5V power supply
+                       5. Check consistency
+3       Cold           1. 10 ㎡ constant temperature Lab          FAN does not        n=10
+        Operation      2. -5℃，humidity 30%，                      screeched           C=0
+                       3. particle generator and air
+                          cleaner
+                       4. DC 5V power supply
+                       5. Check consistency
+4       Vibration      1. 10 ㎡ closed Lab,，20℃，humidity                              n=5
+                          50%，particle generator and air                             C=0
+                          cleaner
+
+                       2. DC 5V power supply and check
+                          consistency
+                       3. Frequency：50Hz。
+                       4. acceleration：9.8/ S²。
+                       5. Direction：X、Y、Z
+                       6. Vibration Amplitude：±2mm。
+                       7. Time：X、Y、Z –way, Per 1 hour
+5       High           1. Constant temperature cabinet  10 samples during            n=10
+        Temperature    2. 70℃，humidity 90%~95，          0~500μ g/m³                  C=0
+        and Humidity   3.   Check consistency after 500
+        Storage        hours’ storage                   0~100μ g/m³
+                                                        Maximum Error≤
+6       Cold Storage   1. Constant temperature cabinet  ±10μ g/m³                    n=10
+                       2. -30℃，humidity 90%~95，                                      C=0
+                       3.   Check consistency after 500 100~500μ g/m³
+                       hours’ storage                   Maximum Error≤
+                                                        ±10%
+7       Variation of   4. 10 ㎡ closed Lab,，20℃，humidity                              n=5
+                       2016 product data manual of PLANTOWER
+
+
+     Power Supply      50%，particle generator and air                         C=0
+                       cleaner                                 FAN does not
+                                                               screeched
+                    5. Power varies as the cycles of 4.5V
+                        to 5.5V ,then 5.5V to 4.5V with
+                        the pace of 0.1V/min for 2 hours.
+                    6. Check        consistency    during
+                        Variation
+8    Power On-Off   1. 10 ㎡ closed Lab,，20℃，humidity                          n=10
+     Cycle              50%，particle generator and air                        C=0
+                        cleaner
+                    2. DC 5V power supply，keep On-Off
+                        frequency 0.5Hz for 72 hours and
+                        check consistency
+9    Sleep Set      1. 10 ㎡ closed Lab,，20℃，humidity                          n=10
+     On-Off             50%，particle generator and air                        C=0
+     Cycle              cleaner
+                    2. DC 5V power supply，keep Sleep
+                        Set Pin High-Low frequency 0.5Hz
+                        for 72 hours and check
+                        consistency
+10   Laser On-Off   1. 10 ㎡ closed Lab,，20℃，humidity                          n=10
+     Cycle              50%，particle generator and air                        C=0
+                        cleaner
+                    2. keep laser On-Off frequency
+                        50Hz for 240 hours and check
+                        consistency
+11   Salt Spray     5% industrial salt water, hydrolysis No rust and          n=1
+                    spray 100 hours, clean with           discoloration of    C=0
+                    purified water and store for 48       metal parts
+                    hours
+                       2016 product data manual of PLANTOWER
+
+
+
+Circuit Attentions
+1) DC 5V power supply is needed because the FAN should be driven by 5V.
+   But the high level of data pin is 3.3V. Level conversion unit should be
+   used if the power of host MCU is 5V.
+2) The SET and RESET pins are pulled up inside so they should not be
+   connected if without usage.
+3) PIN7 and PIN8 should not be connected.
+4) Stable data should be got at least 30 seconds after the sensor wakeup
+   from the sleep mode because of the fan’s performance.
+
+
+ Installation Attentions
+1) Metal shell is connected to the GND so be careful not to let it shorted with
+   the other parts of circuit except GND.
+2) The best way of install is making the plane of inset and outset closely to
+   the plane of the host. Or some shield should be placed between inset and
+   outset in order to prevent the air flow from inner loop.
+3) The blowhole in the shell of the host should not be smaller than the inset.
+4) The sensor should not be installed in the air flow way of the air cleaner or
+   should be shielded by some structure.
+5) The sensor should be installed at least 20cm higher than the grand in
+   order to prevent it from blocking by the floc dust.
+6) Do not break up the sensor.
+7) M2 self-tapping strew should be used to fix the sensor but it should not be
+   deeper than 5mm into the sensor.
+
+
+Other Attentions
+1) Only the consistency of all the PM sensors of PLANTOWER is promised
+   and ensured. And the sensor should not be checked with any third party
+   equipment.
+2) The sensor is usually used in the common indoor environment. So some
+   protection must be added if using in the conditions as followed:
+   a) The time of concentration ≥300μ g/m³ is longer than 50% of the
+      whole year or concentration≥500μ g/m³ is longer than20% of the
+      whole year.
+   b) Kitchen
+   c) Water mist condition such as bathroom or hot spring.
+   d) outdoor
+                   2016 product data manual of PLANTOWER
+
+
+
+Part Number Definition
+                     2016 product data manual of PLANTOWER
+
+
+
+Physical Size (mm)
+                       2016 product data manual of PLANTOWER
+
+
+
+Appendix I：PMS5003 transport protocol-Active Mode
+Default baud rate：9600bps Check bit：None                 Stop bit：1 bit
+32 Bytes
+Start character 1    0x42     (Fixed)
+
+Start character2     0x4d     (Fixed)
+Frame length high ……            Frame length=2x13+2(data+check bytes)
+  8 bits
+
+Frame length low 8 ……
+       bits
+Data 1 high 8 bits   ……         Data1 refers to PM1.0 concentration unit
+                                μ g/m3（CF=1，standard particle）*
+Data 1 low 8 bits    ……
+Data2 high 8 bits    ……         Data2 refers to PM2.5 concentration unit
+                                μ g/m3（CF=1，standard particle）
+Data2 low 8 bits     ……
+Data3 high 8 bits    ……         Data3 refers to PM10 concentration unit
+                                μ g/m3（CF=1，standard particle）
+Data3 low 8 bits     ……
+Data4 high 8 bits    ……         Data4 refers to PM1.0 concentration unit *
+                                μ g/m3（under atmospheric environment）
+Data4 low 8 bits     ……
+Data5 high 8 bits    ……         Data 5 refers to PM2.5 concentration unit
+                                μ g/m3（under atmospheric environment）
+Data5 low 8 bits     ……
+Data6 high 8 bits    …….        Data 6 refers to concentration unit (under
+                                atmospheric environment) μ g/m3
+Data6 low 8 bits     ……
+
+
+Data7 high 8 bits    ……         Data 7 ind ica t e s t he n um b e r of
+                                p a rt icle s wit h d iame t e r b e yo n d 0.3 um
+Data7 low 8 bits     ……         in 0.1 L of air.
+Data8 high 8 bits    ……         Data 8 in d ica te s t he n um be r of
+                                p a rt icle s wit h d iame t e r b e yo n d 0.5 um
+                                in 0.1 L of air.
+Data8 low 8 bits     ……
+Data9 high 8 bits    ……         Data 9 in d ica te s t he n um be r of
+                                p a rt icle s wit h d iame t e r b e yo n d 1.0 um
+                                in 0.1 L of air.
+Data9 low 8 bits     ……
+                         2016 product data manual of PLANTOWER
+
+
+ Data10 high 8 bits ……            Data10 ind ica te s t he n um be r of
+                                  p a rt icle s wit h d iame t e r b e yo n d 2.5 um
+                                  in 0.1 L of air.
+ Data10 low 8 bits   ……
+ Data11 high 8 bits ……            Data11 in d ica te s t he n um be r of
+                                  p a rt icle s wit h d iame t e r b e yo n d 5.0 um
+ Data11 low 8 bits   ……           in 0.1 L of air.
+ Data12 high 8 bits ……            Data 12 in d icat e s the n um be r of
+                                  p a rt icle s wit h d ia me t e r be yo n d 10 um
+ Data12 low 8 bits   ……           in 0.1 L of air.
+ Data13 high 8 bits ……            Data13 Reserved
+
+ Data13 low 8 bits   ……
+ Data and check      ……           Check code=Start character 1+ Start
+ high 8 bits                      character 2+……..+data 13
+                                  Low 8 bits
+ Data and check      ……
+ low 8 bits
+
+
+Note: CF=1 should be used in the factory environment
+.
+                              2016 product data manual of PLANTOWER
+
+
+
+Appendix II：PMS5003 transport protocol-Passive Mode
+ Default baud rate：9600bps Check bit：None                        Stop bit：1 bit
+
+
+Host Protocol
+
+Start Byte   Start Byte    Command        Data 1        Data 2        Verify Byte     Verify Byte
+1            2                                                        1               2
+0x42         0x4d          CMD            DATAH         DATAL         LRCH            LRCL
+
+
+
+
+1. Command Definition
+   CMD                DATAH                        DATAL                  说明
+   0xe2               X                            X                      Read in passive
+                                                                          mode
+    0xe1                  X                        00H-passive            Change mode
+                                                   01H-active
+    0xe4                  X                        00H-sleep              Sleep set
+                                                   01H-wakeup
+
+2. Answer
+   0xe2: 32 bytes , same as appendix I
+3. Verify Bytes :
+   Add of all the bytes except verify bytes.
+

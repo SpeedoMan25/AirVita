@@ -178,16 +178,12 @@ def run_integrated():
             
             # --- PHASE B: ENVIRONMENT (1Hz Update) ---
             now = time.ticks_ms()
-            env_updated_now = False
             if env_sensor and time.ticks_diff(now, last_env_update) > 1000:
                 data = env_sensor.read_all()
                 lux = light_sensor.read() if light_sensor else 0
                 
-                # Check for Air Quality (PMS5003)
-                # Flush buffer and find the LAST valid packet (freshest data)
                 if pms_uart.any() > 0:
                     buffer = pms_uart.read()
-                    # Look for 0x42 0x4D header from the end
                     for i in range(len(buffer) - 31, -1, -1):
                         if buffer[i] == 0x42 and buffer[i+1] == 0x4D:
                             packet = buffer[i:i+32]
@@ -202,65 +198,69 @@ def run_integrated():
                     p = data["pressure"]
                     g = data["gas_res"]
                     is_stab = data.get("gas_stable", False)
+                    is_valid = data.get("gas_valid", False)
                     
-                    status = "OK" if is_stab else "--"
+                    if not is_valid:
+                        status = "INVALID"
+                    elif not is_stab:
+                        status = "HEATING"
+                    else:
+                        status = "STABLE"
+                        
                     g_str = f"{g/1000000:.2f}M" if g > 1000000 else f"{g/1000:.1f}k"
                 last_env_update = now
             
             # --- PHASE C: DASHBOARD RENDERING ---
-            # Create volume bar using Decibels (dB)
-            if rms > 0:
-                db = 20 * math.log10(rms)
-            else:
-                db = 0
-            normalized_db = (db - MIN_DB) / (MAX_DB - MIN_DB)
-            normalized_db = max(0.0, min(1.0, normalized_db))
-            
-            bar_len = int(normalized_db * BAR_WIDTH)
-            bar = "#" * bar_len + "-" * (BAR_WIDTH - bar_len)
-            glitch_indicator = " [!]" if len(samples) < (SAMPLES_PER_READ * 0.5) else "    "
+            try:
+                if rms > 0:
+                    db = 20 * math.log10(rms)
+                else:
+                    db = 0
+                normalized_db = (db - MIN_DB) / (MAX_DB - MIN_DB)
+                normalized_db = max(0.0, min(1.0, normalized_db))
+                
+                bar_len = int(normalized_db * BAR_WIDTH)
+                bar = "#" * bar_len + "-" * (BAR_WIDTH - bar_len) 
+                glitch_indicator = " [!]" if len(samples) < (SAMPLES_PER_READ * 0.5) else "    "
 
-            # Move cursor to home and redraw the dashboard
-            print("\033[H", end="") # Move to 0,0
-            print("============================================================")
-            print("                PICO V2 SENSOR DASHBOARD                    ")
-            print("============================================================")
-            
-            # [AUDIO BLOCK]
-            print(f"[AUDIO]  [{bar}]")
-            print(f"         RMS: {int(rms):7d} | Peak: {int(peak):7d}{glitch_indicator}")
-            print("-" * 60)
-            
-            # [AIR QUALITY BLOCK]
-            pm25_a = pms_data.get("pm25_atm", 0)
-            pm10_a = pms_data.get("pm10_atm", 0)
-            pm100_a = pms_data.get("pm100_atm", 0)
-            
-            pm25_s = pms_data.get("pm25_std", 0)
-            pm10_s = pms_data.get("pm10_std", 0)
-            pm100_s = pms_data.get("pm100_std", 0)
-            
-            aqi_label = "EXCELLENT" if pm25_a <= 12 else "GOOD" if pm25_a <= 35 else "POOR"
-            
-            print(f"[AIR]    ATM (ug/m3): {pm10_a:3d} / {pm25_a:3d} / {pm100_a:3d} (AQI: {aqi_label})")
-            print(f"[AIR]    STD (ug/m3): {pm10_s:3d} / {pm25_s:3d} / {pm100_s:3d}")
-            
-            # Individual Particle Counts
-            p03 = pms_data.get("pc_03um", 0)
-            p05 = pms_data.get("pc_05um", 0)
-            p10 = pms_data.get("pc_10um", 0)
-            p25 = pms_data.get("pc_25um", 0)
-            print(f"[PART.]  >0.3u: {p03:5d} | >0.5u: {p05:5d} | >1.0u: {p10:5d} | Packets: {pms_packets_read}")
-            print(f"[LIGHT]  Lux:   {lux:7.1f} lx")
-            print("-" * 60)
-            
-            # [ENVIRONMENT BLOCK]
-            print(f"[ENV]    Temp: {t:4.1f} C    | Hum:  {h:4.1f} %")
-            print(f"[ENV]    Pres: {p:6.1f} hPa | Gas:  {g_str:7s} ({status})")
-            print("============================================================")
-            print("Press Ctrl+C to stop.                           ")
+                print("\033[H", end="") 
+                print("\033[1;36m============================================================\033[0m")
+                print("\033[1;37m                AIRVITA PICO V2 DASHBOARD                   \033[0m")
+                print("\033[1;36m============================================================\033[0m")
+                
+                # [AUDIO BLOCK]
+                print(f"\033[1;33m[AUDIO]\033[0m  [{bar}]")
+                print(f"         RMS: {int(rms):7d} | Peak: {int(peak):7d}{glitch_indicator}")
+                print("-" * 60)
+                
+                # [AIR QUALITY BLOCK]
+                pm25_a = pms_data.get("pm25_atm", 0)
+                pm10_a = pms_data.get("pm10_atm", 0)
+                pm100_a = pms_data.get("pm100_atm", 0)
+                
+                aqi_color = "\033[1;32m" if pm25_a <= 12 else "\033[1;33m" if pm25_a <= 35 else "\033[1;31m"
+                aqi_label = "EXCELLENT" if pm25_a <= 12 else "GOOD" if pm25_a <= 35 else "POOR"
+                
+                print(f"\033[1;34m[AIR]\033[0m    Mass (ug/m3): {pm10_a:3d} / {pm25_a:3d} / {pm100_a:3d} (AQI: {aqi_color}{aqi_label}\033[0m)")
+                
+                p03 = pms_data.get("pc_03um", 0)
+                p05 = pms_data.get("pc_05um", 0)
+                p10 = pms_data.get("pc_10um", 0)
+                print(f"\033[1;34m[PART.]\033[0m  >0.3u: {p03:5d} | >0.5u: {p05:5d} | >1.0u: {p10:5d}")
+                print(f"\033[1;35m[LIGHT]\033[0m  Lux:   {lux:7.1f} lx")
+                print("-" * 60)
+                
+                # [ENVIRONMENT BLOCK]
+                gas_color = "\033[1;32m" if status == "STABLE" else "\033[1;33m"
+                print(f"\033[1;32m[ENV]\033[0m    Temp: {t:4.1f} C    | Hum:  {h:4.1f} %")
+                print(f"\033[1;32m[ENV]\033[0m    Pres: {p:6.1f} hPa | Gas:  {g_str:7s} ({gas_color}{status}\033[0m)")
+                print("\033[1;36m============================================================\033[0m")
+                print("Press Ctrl+C to stop.                           ")
+            except Exception as e:
+                print(f"Error in Dashboard: {e}")
 
-            time.sleep(0.02)
+            time.sleep(0.1) # Increased delay for serial stability
+
 
     except KeyboardInterrupt:
         print("\n\nStopping integrated test...")

@@ -59,6 +59,7 @@ def run_test():
                 p = data["pressure"]
                 g = data["gas_res"]
                 is_stable = data.get("gas_stable", False)
+                is_valid = data.get("gas_valid", False)
                 
                 # Format Gas for better readability
                 if g > 1000000:
@@ -66,14 +67,15 @@ def run_test():
                 else:
                     g_str = f"{g/1000:.1f} k-Ohm"
                 
-                status_tag = "[READY]" if is_stable else "[STABILIZING]"
+                status_tag = "[OK]" if (is_stable and is_valid) else "[HEATING]" if is_valid else "[INVALID]"
                 elapsed = time.ticks_diff(time.ticks_ms(), start_time) / 1000.0
                     
                 print(f"DATA | T: {t:5.2f}C | H: {h:5.1f}% | P: {p:7.2f}hPa | GAS: {status_tag} {g_str} ({elapsed:.1f}s)")
             else:
-                print("DATA | Stale or missing data bit (waiting...)")
+                print("DATA | Timeout or Error reading BME688")
             
             time.sleep(1)
+
 
     except KeyboardInterrupt:
         print("\nTest stopped by user.")
