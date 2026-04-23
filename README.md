@@ -22,6 +22,16 @@ Unlike basic sensors that only display raw data, AirVita leverages a custom-trai
 
 ---
 
+## Screenshots
+
+<div align="center">
+  <img src="assets/img1.png" alt="AirVita Dashboard Screenshot 1" width="100%" />
+  <br />
+  <img src="assets/img2.png" alt="AirVita Dashboard Screenshot 2" width="100%" />
+</div>
+
+---
+
 ## Features
 
 - **Real-Time Telemetry**: Sub-second latency streaming from edge devices (Pico / Pi 4B) to the React dashboard.
