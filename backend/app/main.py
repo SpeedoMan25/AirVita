@@ -403,6 +403,27 @@ async def connection_info():
     ip = get_lan_ip()
     return {"ip": ip, "url": f"https://{ip}:5173"}
 
+class RoomContextUpdate(BaseModel):
+    device_id: str
+    room_type: str
+    identified_objects: List[str]
+
+@app.post("/api/room-context/update")
+async def update_room_context(update: RoomContextUpdate):
+    if update.device_id not in monitors:
+        raise HTTPException(status_code=404, detail="Monitor not found")
+    
+    m = monitors[update.device_id]
+    from app.models import RoomContext
+    m.room_context = RoomContext(
+        room_type=update.room_type,
+        identified_objects=update.identified_objects
+    )
+    # Also update display name to reflect new context
+    m.display_name = get_unique_room_name(update.room_type, update.device_id)
+    print(f"✏️ Manual Context Update [ {update.device_id} ]: {update.room_type}")
+    return {"status": "success", "context": m.room_context.model_dump()}
+
 @app.get("/api/analyze")
 async def analyze_room(device_id: str):
     """

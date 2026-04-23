@@ -4,6 +4,8 @@ import {
   Settings2, X, RefreshCw, AlertCircle, BrainCircuit,
   CheckCircle2, ChevronRight, Camera, Radio, Crosshair, Cpu
 } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 
 import RoomScanner from './components/RoomScanner'
 import MobilePairing from './components/MobilePairing'
@@ -20,123 +22,146 @@ const SENSOR_META = {
     label: 'Temperature', shortLabel: 'TEMP', unit: '°C', icon: Thermometer,
     iconColor: '#f43f5e', 
     min: 10, max: 40,
-    getStatus: v => v < 18 ? 'COLD' : v < 20 ? 'COOL' : v <= 24 ? 'IDEAL' : v <= 28 ? 'WARM' : 'HOT',
+    getStatus: v => v < 15 ? 'FREEZING' : v < 18 ? 'COLD' : v < 20 ? 'COOL' : v <= 24 ? 'IDEAL' : v <= 27 ? 'WARM' : v <= 32 ? 'HOT' : 'SEARING',
     ranges: [
-      { label: 'Cold', max: 18, color: '#3b82f6', text: 'Risk of discomfort, muscles tense up.' },
-      { label: 'Cool', max: 20, color: '#0ea5e9', text: 'Slightly below ideal. Fine with layers.' },
-      { label: 'Ideal', max: 24, color: '#10b981', text: 'Optimal for health, sleep, and focus.' },
-      { label: 'Warm', max: 28, color: '#fb923c', text: 'Comfortable, but productivity may dip.' },
-      { label: 'Hot', max: 40, color: '#f43f5e', text: 'Increased fatigue, dehydration risk.' },
+      { label: 'Freezing', max: 15, color: '#1e40af', text: 'Significant risk of hypothermia or muscle stiffness over time.' },
+      { label: 'Cold', max: 18, color: '#3b82f6', text: 'Uncomfortably chilly. Circulation slows; fine with heavy layers.' },
+      { label: 'Cool', max: 20, color: '#0ea5e9', text: 'Slightly below ideal. Manageable, but may affect manual dexterity.' },
+      { label: 'Ideal', max: 24, color: '#10b981', text: 'Optimal thermal comfort for metabolic health and cognitive focus.' },
+      { label: 'Warm', max: 27, color: '#fb923c', text: 'Comfortable, but core body temperature may begin to rise slightly.' },
+      { label: 'Hot', max: 32, color: '#f43f5e', text: 'Increased perspiration and fatigue. Cognitive throughput begins to dip.' },
+      { label: 'Searing', max: 40, color: '#9f1239', text: 'Extreme heat stress. Dehydration risk and acute discomfort.' },
     ],
   },
   humidity_pct: {
     label: 'Humidity', shortLabel: 'HUMIDITY', unit: '%', icon: Droplets,
     iconColor: '#0ea5e9', 
     min: 0, max: 100,
-    getStatus: v => v < 30 ? 'DRY' : v < 40 ? 'LOW' : v <= 60 ? 'BALANCED' : v <= 70 ? 'HUMID' : 'DAMP',
+    getStatus: v => v < 20 ? 'ARID' : v < 35 ? 'DRY' : v < 45 ? 'LOW' : v <= 55 ? 'BALANCED' : v <= 65 ? 'SOFT' : v <= 75 ? 'HUMID' : 'DAMP',
     ranges: [
-      { label: 'Dry', max: 30, color: '#fb923c', text: 'Skin irritation, static electricity.' },
-      { label: 'Low', max: 40, color: '#0ea5e9', text: 'Slightly dry; acceptable short-term.' },
-      { label: 'Balanced', max: 60, color: '#10b981', text: 'Ideal range for comfort and health.' },
-      { label: 'Humid', max: 70, color: '#fbbf24', text: 'Muggy feeling, mold risk increases.' },
-      { label: 'Damp', max: 100, color: '#f43f5e', text: 'High mold risk, condensation likely.' },
+      { label: 'Arid', max: 20, color: '#f59e0b', text: 'Severe dryness. Significant risk of sinus irritation and static buildup.' },
+      { label: 'Dry', max: 35, color: '#fb923c', text: 'Dry air may cause skin irritation and dry eyes over long periods.' },
+      { label: 'Low', max: 45, color: '#0ea5e9', text: 'Slightly dry but comfortable for most; safe for electronics.' },
+      { label: 'Balanced', max: 55, color: '#10b981', text: 'The "Goldilocks" zone for respiratory health and structural integrity.' },
+      { label: 'Soft', max: 65, color: '#fbbf24', text: 'Pleasant, moist air. Good for plants, but monitor for condensation.' },
+      { label: 'Humid', max: 75, color: '#f43f5e', text: 'Muggy feeling. Significant risk of mold growth in unventilated areas.' },
+      { label: 'Damp', max: 100, color: '#9f1239', text: 'Extreme moisture. High risk of structural damage and bacterial growth.' },
     ],
   },
   light_lux: {
     label: 'Light', shortLabel: 'LUX', unit: 'lux', icon: Sun,
     iconColor: '#fbbf24', 
     min: 0, max: 1000,
-    getStatus: v => v < 100 ? 'DIM' : v < 300 ? 'LOW' : v <= 500 ? 'OPTIMAL' : v <= 800 ? 'BRIGHT' : 'INTENSE',
+    getStatus: v => v < 5 ? 'VOID' : v < 50 ? 'DIM' : v < 200 ? 'LOW' : v <= 500 ? 'OPTIMAL' : v <= 750 ? 'BRIGHT' : v <= 1000 ? 'INTENSE' : 'BLINDING',
     ranges: [
-      { label: 'Dim', max: 100, color: '#8b5cf6', text: 'Good for sleep and relaxation.' },
-      { label: 'Low', max: 300, color: '#0ea5e9', text: 'Casual activities, reading may strain.' },
-      { label: 'Optimal', max: 500, color: '#10b981', text: 'Ideal for focused work and study.' },
-      { label: 'Bright', max: 800, color: '#fbbf24', text: 'Energizing, but may cause glare.' },
-      { label: 'Intense', max: 1000, color: '#f43f5e', text: 'Eye fatigue possible over time.' },
+      { label: 'Void', max: 5, color: '#4c1d95', text: 'Total darkness. Optimal for deep melatonin production.' },
+      { label: 'Dim', max: 50, color: '#8b5cf6', text: 'Soft ambient light. Good for pre-sleep relaxation or cinema.' },
+      { label: 'Low', max: 200, color: '#0ea5e9', text: 'Casual indoor lighting. May cause eye strain for long-form reading.' },
+      { label: 'Optimal', max: 500, color: '#10b981', text: 'Professional task lighting. Ideal for focus, detail work, and study.' },
+      { label: 'Bright', max: 750, color: '#fbbf24', text: 'Energizing daylight levels. Great for alertness and social areas.' },
+      { label: 'Intense', max: 1000, color: '#f43f5e', text: 'High intensity. May cause glare and digital screen washing.' },
+      { label: 'Blinding', max: 2000, color: '#9f1239', text: 'Extreme brightness. Risk of acute eye fatigue and discomfort.' },
     ],
   },
   noise_db: {
     label: 'Noise', shortLabel: 'NOISE', unit: 'dB', icon: Volume2,
     iconColor: '#8b5cf6', 
     min: 0, max: 100,
-    getStatus: v => v < 30 ? 'SILENT' : v < 45 ? 'QUIET' : v <= 55 ? 'MODERATE' : v <= 70 ? 'LOUD' : 'NOISY',
+    getStatus: v => v < 20 ? 'VOID' : v < 30 ? 'SILENT' : v < 45 ? 'QUIET' : v <= 55 ? 'MODERATE' : v <= 65 ? 'ACTIVE' : v <= 80 ? 'LOUD' : 'NOISY',
     ranges: [
-      { label: 'Silent', max: 30, color: '#10b981', text: 'Perfect for sleep and deep focus.' },
-      { label: 'Quiet', max: 45, color: '#0ea5e9', text: 'Library-level. Great for concentration.' },
-      { label: 'Moderate', max: 55, color: '#fbbf24', text: 'Normal conversation level.' },
-      { label: 'Loud', max: 70, color: '#fb923c', text: 'Sustained exposure causes stress.' },
-      { label: 'Noisy', max: 100, color: '#f43f5e', text: 'Hearing protection recommended.' },
+      { label: 'Void', max: 20, color: '#064e3b', text: 'Absolute silence. Anechoic chamber levels; can be unsettling.' },
+      { label: 'Silent', max: 30, color: '#10b981', text: 'Ideal for deep rest and high-stakes concentration.' },
+      { label: 'Quiet', max: 45, color: '#0ea5e9', text: 'Soft background hum. Equivalent to a quiet library or office.' },
+      { label: 'Moderate', max: 55, color: '#fbbf24', text: 'Normal conversation level. Common for living environments.' },
+      { label: 'Active', max: 65, color: '#fb923c', text: 'Busy office or restaurant levels. Focus begins to fragment.' },
+      { label: 'Loud', max: 80, color: '#f43f5e', text: 'Sustained exposure may cause stress and elevated heart rate.' },
+      { label: 'Noisy', max: 100, color: '#9f1239', text: 'Hazardous for long-term exposure. Hearing fatigue likely.' },
     ],
   },
   pressure_hpa: {
     label: 'Pressure', shortLabel: 'PRESSURE', unit: 'hPa', icon: Gauge,
     iconColor: '#10b981', 
     min: 960, max: 1060,
-    getStatus: v => v < 1000 ? 'LOW' : v <= 1025 ? 'NORMAL' : 'HIGH',
+    getStatus: v => v < 980 ? 'DEPRESSED' : v < 1000 ? 'LOW' : v < 1013 ? 'STANDARD' : v <= 1025 ? 'STABLE' : v <= 1040 ? 'HIGH' : v <= 1055 ? 'EXTREME' : 'SEVERE',
     ranges: [
-      { label: 'Low', max: 1000, color: '#8b5cf6', text: 'Storm system likely. Headaches possible.' },
-      { label: 'Normal', max: 1025, color: '#10b981', text: 'Stable conditions. No weather impact.' },
-      { label: 'High', max: 1060, color: '#fbbf24', text: 'Clear skies. Dry air may increase.' },
+      { label: 'Depressed', max: 980, color: '#4c1d95', text: 'Severe low pressure. High risk of storms and joint discomfort.' },
+      { label: 'Low', max: 1000, color: '#8b5cf6', text: 'Unsettled weather patterns. Possible weather-related headaches.' },
+      { label: 'Standard', max: 1013, color: '#0ea5e9', text: 'Typical sea-level pressure. Generally stable conditions.' },
+      { label: 'Stable', max: 1025, color: '#10b981', text: 'Ideal atmospheric conditions. Clear and calm weather likely.' },
+      { label: 'High', max: 1040, color: '#fbbf24', text: 'Anti-cyclonic conditions. Dry, sinking air and clear skies.' },
+      { label: 'Extreme', max: 1055, color: '#f43f5e', text: 'Abnormally high pressure. May indicate unusual weather systems.' },
+      { label: 'Severe', max: 1100, color: '#9f1239', text: 'Critical pressure variance. Sensor should be recalibrated.' },
     ],
   },
   pm25_ugm3: {
     label: 'PM 2.5', shortLabel: 'PARTICLES', unit: 'µg/m³', icon: Wind,
     iconColor: '#fb923c', 
     min: 0, max: 150,
-    getStatus: v => v < 12 ? 'CLEAN' : v < 35 ? 'MODERATE' : v < 55 ? 'UNHEALTHY' : 'POOR',
+    getStatus: v => v < 5 ? 'PRISTINE' : v < 12 ? 'CLEAN' : v < 25 ? 'MODERATE' : v < 35 ? 'FAIR' : v < 55 ? 'UNHEALTHY' : v < 100 ? 'POOR' : 'HAZARDOUS',
     ranges: [
-      { label: 'Clean', max: 12, color: '#10b981', text: 'Excellent air. Safe for all groups.' },
-      { label: 'Moderate', max: 35, color: '#fbbf24', text: 'Acceptable. Sensitive people may react.' },
-      { label: 'Unhealthy', max: 55, color: '#fb923c', text: 'Limit prolonged outdoor exertion.' },
-      { label: 'Poor', max: 150, color: '#f43f5e', text: 'Health risk. Use air purification.' },
+      { label: 'Pristine', max: 5, color: '#059669', text: 'Laboratory-grade air. Zero detectable particulates.' },
+      { label: 'Clean', max: 12, color: '#10b981', text: 'Excellent indoor air quality. Safe for all health groups.' },
+      { label: 'Moderate', max: 25, color: '#fbbf24', text: 'Acceptable levels for short periods. Minimal health impact.' },
+      { label: 'Fair', max: 35, color: '#f59e0b', text: 'Noticeable haze possible. Sensitive groups should monitor.' },
+      { label: 'Unhealthy', max: 55, color: '#fb923c', text: 'Particulate load begins to stress respiratory defenses.' },
+      { label: 'Poor', max: 100, color: '#f43f5e', text: 'Visible smog. Health risks for elderly and children.' },
+      { label: 'Hazardous', max: 200, color: '#9f1239', text: 'Dangerous concentration. Use HEPA filtration immediately.' },
     ],
   }
 }
 
 const ACTIVITY_META = {
   health: {
-    label: 'HEALTH BALANCE', id: 'health', color: '#10b981', sub: 'Optimal Airflow',
+    label: 'HEALTH BALANCE', id: 'health', color: '#10b981', sub: 'Bio-Metric Wellness',
     ranges: [
-      { label: 'Critical', max: 25, color: '#f43f5e', text: 'Severe environmental issues detected.' },
-      { label: 'Poor', max: 50, color: '#fb923c', text: 'Multiple factors need improvement.' },
-      { label: 'Fair', max: 70, color: '#fbbf24', text: 'Acceptable but room for improvement.' },
-      { label: 'Good', max: 85, color: '#10b981', text: 'Healthy environment for all activities.' },
-      { label: 'Excellent', max: 100, color: '#059669', text: 'Optimal conditions across all metrics.' },
+      { label: 'Hazardous', max: 15, color: '#f43f5e', text: 'Extreme particulates (>75µg) or humidity (>80%) detected. High risk of mold bloom or immediate illness.' },
+      { label: 'Critical', max: 30, color: '#e11d48', text: 'Substantial PM2.5 levels detected. Respiratory irritation and eye strain likely for all occupants.' },
+      { label: 'Poor', max: 45, color: '#fb923c', text: 'Stagnant air and thermal imbalances. Environment actively draining energy and immune system reserves.' },
+      { label: 'Fair', max: 60, color: '#fbbf24', text: 'Moderate air quality. Acceptable for short periods but lacks the freshness required for peak health.' },
+      { label: 'Balanced', max: 75, color: '#10b981', text: 'Stable metrics. Particulates < 15µg/m³ and humidity in the safe 45-55% zone support lung health.' },
+      { label: 'Optimal', max: 90, color: '#059669', text: 'Highly restorative air. Low-stress environment with perfect oxygenation to support long-term wellness.' },
+      { label: 'Elite', max: 100, color: '#047857', text: 'Museum-grade filtration and total thermal stability. Peak biological safety for the most sensitive occupants.' },
     ],
-    getStatus: v => v < 25 ? 'CRITICAL' : v < 50 ? 'POOR' : v < 70 ? 'FAIR' : v < 85 ? 'GOOD' : 'EXCELLENT',
+    getStatus: v => v < 15 ? 'HAZARDOUS' : v < 30 ? 'CRITICAL' : v < 45 ? 'POOR' : v < 60 ? 'FAIR' : v < 75 ? 'BALANCED' : v < 90 ? 'OPTIMAL' : 'ELITE',
   },
   sleep: {
-    label: 'SLEEP RECOVERY', id: 'sleep', color: '#8b5cf6', sub: 'Poor Conditions',
+    label: 'SLEEP RECOVERY', id: 'sleep', color: '#8b5cf6', sub: 'Circadian Hygiene',
     ranges: [
-      { label: 'Restless', max: 30, color: '#f43f5e', text: 'Too noisy, bright, or warm for sleep.' },
-      { label: 'Disturbed', max: 50, color: '#fb923c', text: 'Intermittent disruptions likely.' },
-      { label: 'Adequate', max: 70, color: '#fbbf24', text: 'Sleep possible, but not restorative.' },
-      { label: 'Restful', max: 85, color: '#8b5cf6', text: 'Good conditions for deep sleep.' },
-      { label: 'Optimal', max: 100, color: '#6d28d9', text: 'Dark, cool, quiet — perfect for sleep.' },
+      { label: 'Insomnia', max: 15, color: '#f43f5e', text: 'Extreme noise (>60dB) or light (>100 lux). Melatonin production is actively suppressed; sleep is impossible.' },
+      { label: 'Restless', max: 30, color: '#e11d48', text: 'Persistent noise/light disruptions. Deep REM and Stage 4 sleep cycles are frequently interrupted.' },
+      { label: 'Disturbed', max: 45, color: '#fb923c', text: 'Temperature or humidity spikes causing physical discomfort and night-waking. Recovery is fragmented.' },
+      { label: 'Shallow', max: 60, color: '#fbbf24', text: 'Basic rest possible, but background noise or air quality inhibits deep neural restoration.' },
+      { label: 'Restful', max: 75, color: '#8b5cf6', text: 'Good environmental quiet (<35dB). Supportive conditions for primary physical and mental recovery.' },
+      { label: 'Deep', max: 90, color: '#7c3aed', text: 'Dark (<5 lux) and cool (~18.5°C). Optimal conditions for muscle repair and cognitive memory consolidation.' },
+      { label: 'Sublime', max: 100, color: '#6d28d9', text: 'Total sensory isolation. Silent, dark, and perfectly ventilated for maximum growth hormone release.' },
     ],
-    getStatus: v => v < 30 ? 'RESTLESS' : v < 50 ? 'DISTURBED' : v < 70 ? 'ADEQUATE' : v < 85 ? 'RESTFUL' : 'OPTIMAL',
+    getStatus: v => v < 15 ? 'INSOMNIA' : v < 30 ? 'RESTLESS' : v < 45 ? 'DISTURBED' : v < 60 ? 'SHALLOW' : v < 75 ? 'RESTFUL' : v < 90 ? 'DEEP' : 'SUBLIME',
   },
   work: {
-    label: 'WORK FOCUS', id: 'work', color: '#0ea5e9', sub: 'Subdued / Distracted',
+    label: 'WORK FOCUS', id: 'work', color: '#0ea5e9', sub: 'Cognitive Throughput',
     ranges: [
-      { label: 'Blocked', max: 30, color: '#f43f5e', text: 'Environment actively disrupts workflow.' },
-      { label: 'Struggling', max: 50, color: '#fb923c', text: 'Productivity significantly hampered.' },
-      { label: 'Steady', max: 70, color: '#fbbf24', text: 'Manageable but comfort improvements help.' },
-      { label: 'Productive', max: 85, color: '#0ea5e9', text: 'Comfortable, well-lit, focused space.' },
-      { label: 'Peak', max: 100, color: '#0284c7', text: 'Ideal temperature, light, and air quality.' },
+      { label: 'Toxic', max: 15, color: '#f43f5e', text: 'High VOC/CO2 proxies detected. Severe "Brain Fog," lethargy, and headaches are certain.' },
+      { label: 'Blocked', max: 30, color: '#e11d48', text: 'Extreme environmental stress (noise/heat). Productivity is functionally zero due to sensory overload.' },
+      { label: 'Struggling', max: 45, color: '#fb923c', text: 'Low light (<150 lux) and stagnant air causing lethargy. Mental processing speed is significantly lowered.' },
+      { label: 'Baseline', max: 60, color: '#fbbf24', text: 'Functional workspace. Minor sensory friction or humidity drift prevents long-term flow states.' },
+      { label: 'Focused', max: 75, color: '#0ea5e9', text: 'Task-appropriate lighting (>400 lux) and quiet. Sustained concentration is achievable for complex tasks.' },
+      { label: 'Productive', max: 90, color: '#0284c7', text: 'Clean air and stable temperature support high cognitive throughput and sustained mental clarity.' },
+      { label: 'Peak Flow', max: 100, color: '#0369a1', text: 'Total cognitive clarity. Zero sensory distractions and perfect oxygenation for maximum flow-state duration.' },
     ],
-    getStatus: v => v < 30 ? 'BLOCKED' : v < 50 ? 'STRUGGLING' : v < 70 ? 'STEADY' : v < 85 ? 'PRODUCTIVE' : 'PEAK',
+    getStatus: v => v < 15 ? 'TOXIC' : v < 30 ? 'BLOCKED' : v < 45 ? 'STRUGGLING' : v < 60 ? 'BASELINE' : v < 75 ? 'FOCUSED' : v < 90 ? 'PRODUCTIVE' : 'PEAK FLOW',
   },
   fun: {
-    label: 'SOCIAL ATMOSPHERE', id: 'fun', color: '#f43f5e', sub: 'Vibrant & Electric',
+    label: 'SOCIAL ATMOSPHERE', id: 'fun', color: '#f43f5e', sub: 'Ambient Energy',
     ranges: [
-      { label: 'Dull', max: 30, color: '#71717a', text: 'Environment feels flat and uninviting.' },
-      { label: 'Subdued', max: 50, color: '#fbbf24', text: 'Lacks vibrancy for social activities.' },
-      { label: 'Pleasant', max: 70, color: '#10b981', text: 'Comfortable for casual socializing.' },
-      { label: 'Vibrant', max: 85, color: '#f43f5e', text: 'Lively, warm, and engaging atmosphere.' },
-      { label: 'Electric', max: 100, color: '#e11d48', text: 'Peak social energy. Great for hosting.' },
+      { label: 'Sterile', max: 15, color: '#71717a', text: 'Cold, dim, and silent. Environment feels abandoned and uninviting for any human interaction.' },
+      { label: 'Dull', max: 30, color: '#a1a1aa', text: 'Lacks ambient energy. Conversation feels strained due to poor acoustics or thermal discomfort.' },
+      { label: 'Subdued', max: 45, color: '#fbbf24', text: 'Functional for quiet 1-on-1s, but lacks the energy or vibrancy for group social activities.' },
+      { label: 'Casual', max: 60, color: '#10b981', text: 'Pleasant temperature and light. Comfortable for low-energy social engagement and relaxation.' },
+      { label: 'Vibrant', max: 75, color: '#f43f5e', text: 'Energizing atmosphere. Warm lighting (>500 lux) and fresh air actively encourage social flow.' },
+      { label: 'Electric', max: 90, color: '#e11d48', text: 'Peak hosting energy. Ideal 55-65dB ambient floor and vivid light for maximum group engagement.' },
+      { label: 'Luminous', max: 100, color: '#be123c', text: 'Peak sensory engagement. Ideal atmosphere for high-energy social gatherings and vivid interactions.' },
     ],
-    getStatus: v => v < 30 ? 'DULL' : v < 50 ? 'SUBDUED' : v < 70 ? 'PLEASANT' : v < 85 ? 'VIBRANT' : 'ELECTRIC',
+    getStatus: v => v < 15 ? 'STERILE' : v < 30 ? 'DULL' : v < 45 ? 'SUBDUED' : v < 60 ? 'CASUAL' : v < 75 ? 'VIBRANT' : v < 90 ? 'ELECTRIC' : 'LUMINOUS',
   }
 }
 
@@ -155,7 +180,7 @@ const CONVERSIONS = {
    CUSTOM VISUALIZATIONS
    ═══════════════════════════════════════════════════ */
 
-const RadarMatrix = ({ scores, activeAxisId, activeColor }) => {
+const RadarMatrix = ({ scores, activeAxisId, activeColor, onAxisClick }) => {
   const center = 100;
   const radius = 70;
   
@@ -174,11 +199,23 @@ const RadarMatrix = ({ scores, activeAxisId, activeColor }) => {
 
   const points = axes.map(a => `${getCoord(a.val, a.angle).x},${getCoord(a.val, a.angle).y}`).join(' ');
 
+  const hOp = Math.round((scores?.health ?? 0) * 1.0).toString(16).padStart(2, '0');
+  const wOp = Math.round((scores?.work ?? 0) * 1.0).toString(16).padStart(2, '0');
+  const sOp = Math.round((scores?.sleep ?? 0) * 1.0).toString(16).padStart(2, '0');
+  const fOp = Math.round((scores?.fun ?? 0) * 1.0).toString(16).padStart(2, '0');
+
+  const dynamicGradient = `
+    radial-gradient(circle at 50% 25%, ${ACTIVITY_META.health.color}${hOp}, transparent 70%),
+    radial-gradient(circle at 75% 50%, ${ACTIVITY_META.work.color}${wOp}, transparent 70%),
+    radial-gradient(circle at 50% 75%, ${ACTIVITY_META.sleep.color}${sOp}, transparent 70%),
+    radial-gradient(circle at 25% 50%, ${ACTIVITY_META.fun.color}${fOp}, transparent 70%)
+  `;
+
   return (
-    <div className="relative w-full aspect-square max-w-[280px] mx-auto flex items-center justify-center">
+    <div className="relative h-full w-full max-h-full max-w-full aspect-square mx-auto flex items-center justify-center p-8">
       <div 
-        className="absolute inset-0 blur-[60px] rounded-full opacity-15" 
-        style={{ backgroundColor: '#10b981' }}
+        className="absolute inset-0 rounded-full animate-hum" 
+        style={{ background: dynamicGradient, transition: 'background 1s ease-in-out' }}
       ></div>
       
       <svg viewBox="0 0 200 200" className="w-full h-full overflow-visible relative z-10">
@@ -190,7 +227,7 @@ const RadarMatrix = ({ scores, activeAxisId, activeColor }) => {
         {axes.map((a, i) => {
           const pt = getCoord(100, a.angle);
           return (
-            <g key={i}>
+            <g key={i} onClick={() => onAxisClick?.(a.id)} className="cursor-pointer group">
               <line x1={center} y1={center} x2={pt.x} y2={pt.y} stroke={a.color} strokeWidth="1" strokeOpacity="0.5" />
               <text 
                 x={center + (radius + 24) * Math.cos(a.angle * Math.PI / 180)} 
@@ -198,7 +235,7 @@ const RadarMatrix = ({ scores, activeAxisId, activeColor }) => {
                 fill={a.color} 
                 fontSize="11" fontFamily="monospace"
                 textAnchor="middle" dominantBaseline="middle"
-                className="font-bold"
+                className="font-bold transition-all duration-300 group-hover:brightness-150"
                 letterSpacing="0.1em"
               >
                 {a.id.toUpperCase()}
@@ -233,7 +270,8 @@ const RadarMatrix = ({ scores, activeAxisId, activeColor }) => {
           return (
             <circle 
               key={i} cx={pt.x} cy={pt.y} r={3} fill={a.color}
-              className="transition-all duration-700 ease-out"
+              onClick={() => onAxisClick?.(a.id)}
+              className="transition-all duration-700 ease-out cursor-pointer hover:r-5"
             />
           );
         })}
@@ -242,7 +280,10 @@ const RadarMatrix = ({ scores, activeAxisId, activeColor }) => {
   );
 };
 
-const AreaChart = ({ history, sensorKey, color, unitSystem }) => {
+const AreaChart = ({ history, sensorKey, color, unitSystem, isExpanded }) => {
+  const [hoverIdx, setHoverIdx] = useState(null);
+  const containerRef = useRef(null);
+
   const data = history.map(entry => {
     let val = entry[sensorKey];
     if (val == null) return 0;
@@ -295,10 +336,25 @@ const AreaChart = ({ history, sensorKey, color, unitSystem }) => {
   }
 
   const areaD = `${pathD} L 100,100 L 0,100 Z`;
-  const lastPoint = getXY(data[data.length - 1], data.length - 1);
+
+  const handleMouseMove = (e) => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const pct = x / rect.width;
+    const idx = Math.round(pct * (data.length - 1));
+    setHoverIdx(Math.max(0, Math.min(data.length - 1, idx)));
+  };
+
+  const hoverPoint = hoverIdx !== null ? getXY(data[hoverIdx], hoverIdx) : null;
 
   return (
-    <div className="w-full h-full relative">
+    <div 
+      ref={containerRef}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={() => setHoverIdx(null)}
+      className="w-full h-full relative cursor-crosshair group/chart"
+    >
       <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full overflow-visible">
         <defs>
           <linearGradient id={`grad-${sensorKey}`} x1="0" x2="0" y1="0" y2="1">
@@ -309,8 +365,60 @@ const AreaChart = ({ history, sensorKey, color, unitSystem }) => {
         <path d="M0,25 L100,25 M0,50 L100,50 M0,75 L100,75" stroke="#27272a" strokeWidth="0.5" fill="none" />
         <path d={areaD} fill={`url(#grad-${sensorKey})`} style={{ transition: 'all 500ms linear' }} />
         <path d={pathD} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" style={{ transition: 'all 500ms linear' }} />
-        <circle cx={lastPoint[0]} cy={lastPoint[1]} r="2" fill={color} style={{ transition: 'all 500ms linear' }} className="animate-pulse" />
+        
+        {hoverPoint && (
+          <line x1={hoverPoint[0]} y1="0" x2={hoverPoint[0]} y2="100" stroke={color} strokeWidth="0.5" strokeDasharray="2 1" strokeOpacity="0.5" />
+        )}
       </svg>
+
+      {isExpanded && [25, 50, 75].map(yPct => {
+        const val = min + (((100 - yPct) - 5) / 90) * range;
+        const unit = CONVERSIONS[sensorKey]?.[unitSystem]?.unit || SENSOR_META[sensorKey]?.unit;
+        return (
+          <div 
+            key={yPct} 
+            className="absolute left-2 text-[9px] font-mono text-zinc-600 uppercase pointer-events-none"
+            style={{ top: `${yPct}%`, transform: 'translateY(-100%)' }}
+          >
+            {val.toFixed(1)}{unit}
+          </div>
+        );
+      })}
+
+      {hoverPoint && (
+        <div 
+          className="absolute z-40 pointer-events-none rounded-full border-2 border-white shadow-[0_0_10px_rgba(0,0,0,0.8)] transition-all duration-75"
+          style={{ 
+            left: `${hoverPoint[0]}%`, 
+            top: `${hoverPoint[1]}%`,
+            width: '8px',
+            height: '8px',
+            backgroundColor: color,
+            transform: 'translate(-50%, -50%)',
+            boxShadow: `0 0 12px ${color}`
+          }}
+        />
+      )}
+
+      {hoverIdx !== null && (
+        <div 
+          className="absolute z-50 pointer-events-none bg-zinc-900/95 border border-zinc-700 px-3 py-2 rounded-md shadow-2xl text-[11px] font-mono whitespace-nowrap animate-in fade-in zoom-in duration-150 backdrop-blur-md"
+          style={{ 
+            left: `${Math.min(80, Math.max(20, hoverPoint[0]))}%`, 
+            top: '5%',
+            transform: 'translateX(-50%)'
+          }}
+        >
+          <div className="flex flex-col gap-1">
+            <span className="text-zinc-500 text-[9px] uppercase tracking-wider border-b border-zinc-800 pb-1 mb-1">
+              {history[hoverIdx]?.timestamp ? new Date(history[hoverIdx].timestamp * 1000).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '---'}
+            </span>
+            <span className="font-bold text-base text-white flex items-baseline gap-1">
+              {data[hoverIdx].toFixed(1)} <span className="text-xs text-zinc-400 font-normal">{CONVERSIONS[sensorKey]?.[unitSystem]?.unit || SENSOR_META[sensorKey]?.unit}</span>
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -341,6 +449,17 @@ function AnimatedNumber({ value, decimals = 1 }) {
   return <>{displayed}</>
 }
 
+const ResizeHandle = ({ direction = 'horizontal' }) => (
+  <PanelResizeHandle
+    style={direction === 'vertical' ? { height: '2px', minHeight: '2px', flexShrink: 0 } : { width: '2px', minWidth: '2px', flexShrink: 0 }}
+    className={`group z-40 transition-colors duration-200 ${
+      direction === 'horizontal'
+        ? 'cursor-col-resize bg-zinc-800 hover:bg-zinc-600 active:bg-emerald-500/60'
+        : 'cursor-row-resize bg-zinc-800 hover:bg-zinc-600 active:bg-emerald-500/60'
+    }`}
+  />
+);
+
 /* ═══════════════════════════════════════════════════
    MAIN APPLICATION
    ═══════════════════════════════════════════════════ */
@@ -364,6 +483,15 @@ export default function App() {
   const [unitSystem, setUnitSystem] = useState('imperial')
   const [isScannerOpen, setIsScannerOpen] = useState(false)
   const [isPairingOpen, setIsPairingOpen] = useState(false)
+  const [expandedSensorKey, setExpandedSensorKey] = useState(null)
+  
+  // Local edit state for room context
+  const [isEditingRoomType, setIsEditingRoomType] = useState(false)
+  const [newObjectInput, setNewObjectInput] = useState('')
+
+  const [serverActive, setServerActive] = useState(false)
+  const [dataActive, setDataActive] = useState(false)
+  const lastDataTimestamp = useRef(0)
 
   /* ── Data Fetching ── */
   const fetchStatus = useCallback(async () => {
@@ -371,8 +499,19 @@ export default function App() {
       const res = await fetch(`${API_BASE}/api/current-status?device_id=${activeMonitorId}`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
+      
+      // Heartbeat flicker (Server)
+      setServerActive(true)
+      setTimeout(() => setServerActive(false), 100)
+
       setStatus(data)
       if (data.reading) {
+        // Data flicker (Stream) - only if timestamp changed
+        if (data.reading.timestamp_ms !== lastDataTimestamp.current) {
+          setDataActive(true)
+          setTimeout(() => setDataActive(false), 100)
+          lastDataTimestamp.current = data.reading.timestamp_ms
+        }
         setHistory(prev => {
           const entry = {
             ...data.reading,
@@ -467,6 +606,40 @@ export default function App() {
     }
   }, [analysisCooldown])
 
+  const saveContextChange = async (updatedType, updatedObjects) => {
+    try {
+      await fetch(`${API_BASE}/api/room-context/update`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          device_id: activeMonitorId,
+          room_type: updatedType,
+          identified_objects: updatedObjects
+        })
+      });
+      fetchStatus();
+      // Re-trigger analysis with new context
+      setTimeout(fetchAnalysis, 500);
+    } catch (err) { console.error(err); }
+  }
+
+  const removeObject = (idx) => {
+    const next = status.room_context.identified_objects.filter((_, i) => i !== idx);
+    saveContextChange(status.room_context.room_type, next);
+  }
+
+  const addObject = () => {
+    if (!newObjectInput.trim()) return;
+    const next = [...(status.room_context.identified_objects || []), newObjectInput.trim()];
+    saveContextChange(status.room_context.room_type, next);
+    setNewObjectInput('');
+  }
+
+  const updateRoomType = (newType) => {
+    saveContextChange(newType, status.room_context.identified_objects);
+    setIsEditingRoomType(false);
+  }
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const urlDevId = params.get('device_id');
@@ -491,8 +664,16 @@ export default function App() {
     }
   }, [fetchStatus, fetchScenarios, fetchMonitors])
 
+  // Auto-close pairing modal when connection or sync is established
+  useEffect(() => {
+    if (isPairingOpen && (status?.pairing_status === 'connected' || status?.pairing_status === 'finished')) {
+      setIsPairingOpen(false);
+    }
+  }, [status?.pairing_status, isPairingOpen]);
+
   const reading = status?.reading ?? null
   const connected = status?.connected ?? false
+  const isDataStale = connected && reading && (Date.now() - (reading.timestamp_ms || 0) > 5000);
 
   // Determine Active Focus Logic for UI Highlighting
   const rawKey = activeSensorKey || 'activity_fun'
@@ -574,29 +755,35 @@ export default function App() {
             <span className="font-bold text-sm tracking-widest text-zinc-100 uppercase">AirVita</span>
           </div>
           
-          <div className="hidden sm:flex items-center gap-4 font-mono text-xs text-zinc-500 uppercase tracking-widest">
-            <span className="flex items-center gap-1.5">
-              <Radio size={12} className={connected ? "text-[#10b981] animate-pulse" : "text-zinc-600"}/> 
-              SERVER: {connected ? 'CONNECTED' : 'DISCONNECTED'}
-            </span>
-            <span>STREAM: {connected ? 'ACTIVE' : 'PAUSED'}</span>
+          <div className="hidden sm:flex items-center gap-8 font-mono text-[10px] uppercase tracking-[0.15em]">
+            <div className="flex items-center gap-3">
+              <div className={`w-8 h-8 rounded-sm transition-all duration-500 flex items-center justify-center shrink-0 ${connected ? (serverActive ? 'bg-emerald-500/15 border-emerald-500/30' : 'bg-emerald-500/10 border-emerald-500/20') : 'animate-danger'}`}>
+                <Radio size={14} className={`transition-colors duration-300 ${connected ? (serverActive ? "text-emerald-400" : "text-emerald-500/50") : "text-rose-500"}`} />
+              </div>
+              <div className="flex flex-col justify-center">
+                <span className="text-[11px] text-zinc-200 font-bold leading-none mb-1">Server Status</span>
+                <span className={`text-[9px] transition-colors duration-500 ${connected ? (serverActive ? 'text-emerald-400' : 'text-emerald-500/50') : 'text-rose-500 font-bold'} leading-none`}>
+                  {connected ? 'CONNECTED' : 'OFFLINE'}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className={`w-8 h-8 rounded-sm transition-all duration-500 flex items-center justify-center shrink-0 ${!isDataStale && connected ? (dataActive ? 'bg-emerald-500/15 border-emerald-500/30' : 'bg-emerald-500/10 border-emerald-500/20') : 'animate-danger'}`}>
+                <Activity size={14} className={`transition-colors duration-300 ${!isDataStale && connected ? (dataActive ? "text-emerald-400" : "text-emerald-500/50") : "text-rose-500"}`} />
+              </div>
+              <div className="flex flex-col justify-center">
+                <span className="text-[11px] text-zinc-200 font-bold leading-none mb-1">Data Stream</span>
+                <span className={`text-[9px] transition-colors duration-500 ${!isDataStale && connected ? (dataActive ? 'text-emerald-400' : 'text-emerald-500/50') : 'text-rose-500 font-bold'} leading-none`}>
+                  {!isDataStale && connected ? 'ACTIVE' : 'DROPPED'}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
         <div className="flex items-center h-full gap-4">
-          <div className="flex items-center bg-zinc-900/50 border border-zinc-800 rounded px-1 py-0.5">
-            {['metric', 'imperial'].map(sys => (
-              <button
-                key={sys}
-                onClick={() => setUnitSystem(sys)}
-                className={`px-3 py-1 text-[11px] font-mono uppercase tracking-wider rounded transition-colors ${
-                  unitSystem === sys ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-500 hover:text-zinc-400'
-                }`}
-              >
-                {sys.substring(0,3)}
-              </button>
-            ))}
-          </div>
+
 
           <select
             value={activeMonitorId === 'simulation' ? '' : activeMonitorId}
@@ -632,12 +819,6 @@ export default function App() {
           </select>
 
           <div className="flex items-center border-l border-zinc-800/80 h-full pl-4 gap-4">
-            <button
-              onClick={() => (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? setIsScannerOpen(true) : setIsPairingOpen(true))}
-              className="text-xs font-mono text-zinc-400 hover:text-zinc-100 transition-colors uppercase tracking-widest flex items-center gap-1.5"
-            >
-              <Crosshair size={14} /> <span className="hidden sm:inline">Init Scan</span>
-            </button>
             <button onClick={() => setIsTechOpen(!isTechOpen)} className="text-zinc-500 hover:text-zinc-300">
               <Settings2 size={16} />
             </button>
@@ -647,206 +828,294 @@ export default function App() {
 
       {/* ──────────── MAIN: Two Horizontal Bands ──────────── */}
       <main className="flex-1 min-h-0 flex flex-col">
+        <PanelGroup direction="vertical">
+          <Panel defaultSize={48} minSize={30}>
+            <PanelGroup direction="horizontal">
+              {/* ── Radar Matrix ── */}
+              <Panel defaultSize={30} minSize={20}>
+                <div className="h-full relative flex items-center justify-center bg-zinc-950/30 p-6 overflow-hidden">
+                  <RadarMatrix scores={scoreData} activeAxisId={isActivity ? lookupKey : null} activeColor={activeColor} onAxisClick={(id) => setActiveSensorKey('activity_' + id)} />
+                </div>
+              </Panel>
 
-        {/* ═══ TOP BAND: Radar + Focus Details + AI Insights ═══ */}
-        <div className="h-[50%] flex min-h-0 border-b border-zinc-800/80">
+              <ResizeHandle />
 
-          {/* ── Radar Matrix ── */}
-          <div className="w-[28%] min-w-[220px] relative flex items-center justify-center border-r border-zinc-800/80 bg-zinc-950/30 p-4">
-            <div className="absolute top-3 left-4 flex items-center gap-2">
-              <Cpu size={14} className="text-zinc-500" />
-              <span className="text-xs font-mono text-zinc-500 uppercase tracking-widest">Composite Matrix</span>
-            </div>
-            <RadarMatrix scores={scoreData} activeAxisId={isActivity ? lookupKey : null} activeColor={activeColor} />
-          </div>
-
-          {/* ── Current Focus — Threshold Details ── */}
-          <div className="w-[320px] xl:w-[360px] shrink-0 flex flex-col min-w-0 border-r border-zinc-800/80 bg-[#09090b]">
-            
-            {/* Focus Header */}
-            <div className="px-5 py-4 flex items-center justify-between bg-zinc-900/20 border-b border-zinc-800/50 shrink-0">
-              <span className="text-base font-mono text-zinc-400 uppercase tracking-widest">
-                Focus: <span className="font-semibold transition-colors duration-500" style={{ color: activeColor }}>{activeMeta?.label || activeMeta?.shortLabel || 'SYSTEM'}</span>
-              </span>
-              <span className="text-base font-mono font-semibold transition-colors duration-500" style={{ color: activeColor }}>
-                [{displayActiveValue} {isActivity ? 'PTS' : (CONVERSIONS[rawKey]?.[unitSystem]?.unit || activeMeta?.unit)}]
-              </span>
-            </div>
-
-            {/* Threshold Tiers — vertical list with more room */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-3">
-              {activeMeta?.ranges.map((t, idx) => {
-                let isActiveRange = false;
-                if (currentActiveValue != null) {
-                  const prevMax = idx > 0 ? activeMeta.ranges[idx - 1].max : -Infinity;
-                  isActiveRange = currentActiveValue > prevMax && currentActiveValue <= t.max;
-                }
-                return (
-                  <div key={idx} className="group flex flex-col gap-2 mb-3">
-                    <div className="flex items-center justify-between">
-                      <span 
-                        className={`text-base font-mono uppercase tracking-widest transition-colors ${isActiveRange ? 'font-semibold' : 'text-zinc-600 group-hover:text-zinc-500'}`}
-                        style={isActiveRange ? { color: activeColor } : {}}
-                      >
-                        {t.label}
-                      </span>
-                      <span className="text-sm font-mono text-zinc-600">≤ {t.max}</span>
-                    </div>
-                    <p className={`text-base leading-snug transition-colors duration-300 ${isActiveRange ? 'text-zinc-300' : 'text-zinc-600'}`}>
-                      {t.text}
-                    </p>
+              {/* ── Current Focus — Threshold Details ── */}
+              <Panel defaultSize={35} minSize={25}>
+                <div className="h-full flex flex-col bg-[#09090b]">
+                  {/* Focus Header */}
+                  <div className="px-5 py-4 flex items-center justify-between bg-zinc-900/20 border-b border-zinc-800/50 shrink-0">
+                    <span className="text-base font-mono text-zinc-400 uppercase tracking-widest">
+                      Focus: <span className="font-semibold transition-colors duration-500" style={{ color: activeColor }}>{activeMeta?.label || activeMeta?.shortLabel || 'SYSTEM'}</span>
+                    </span>
+                    <span className="text-base font-mono font-semibold transition-colors duration-500" style={{ color: activeColor }}>
+                      [{displayActiveValue} {isActivity ? 'PTS' : (CONVERSIONS[rawKey]?.[unitSystem]?.unit || activeMeta?.unit)}]
+                    </span>
                   </div>
-                );
-              })}
-            </div>
-          </div>
 
-          {/* ── AI Insights / Scanner ── */}
-          <div className="flex-1 flex flex-col bg-[#09090b] min-h-0 min-w-[300px]">
-
-            {/* Header */}
-            <div className="px-4 py-3 border-b border-zinc-800/80 flex items-center justify-between shrink-0 bg-zinc-900/20">
-              <span className="text-sm font-mono uppercase tracking-widest flex items-center gap-2 transition-colors duration-500" style={{ color: activeColor }}>
-                <BrainCircuit size={16} /> Neural Diagnostics
-              </span>
-              <div className="flex items-center gap-3">
-                {analysisCooldown > 0 && (
-                  <span className="text-xs font-mono text-zinc-600 uppercase">COOLDOWN: {analysisCooldown}S</span>
-                )}
-                <button 
-                  onClick={fetchAnalysis} 
-                  disabled={analysisLoading || analysisCooldown > 0} 
-                  className={`transition-colors ${(analysisLoading || analysisCooldown > 0) ? 'text-zinc-800' : 'text-zinc-600 hover:text-zinc-300'}`}
-                >
-                  <RefreshCw size={16} className={analysisLoading ? 'animate-spin' : ''} />
-                </button>
-              </div>
-            </div>
-
-             {/* Scanning Visualizer */}
-            <div className="h-28 shrink-0 border-b border-zinc-800/80 bg-zinc-950 relative overflow-hidden flex items-center justify-center group">
-              <div className="absolute inset-0" style={{ backgroundImage: 'linear-gradient(#18181b 1px, transparent 1px), linear-gradient(90deg, #18181b 1px, transparent 1px)', backgroundSize: '12px 12px' }}></div>
-              
-              {(analysisLoading || (status?.pairing_status === 'connected')) && (
-                <div className="absolute top-0 left-0 right-0 h-0.5 opacity-50 animate-[scan_3s_ease-in-out_infinite] transition-colors duration-500" style={{ backgroundColor: activeColor, boxShadow: `0 0 8px ${activeColor}` }}></div>
-              )}
-              
-              <div className="relative z-10 text-center px-4 w-full">
-                {analysisError ? (
-                  <>
-                    <AlertCircle size={20} className="mx-auto text-[#f43f5e] mb-1" />
-                    <span className="text-xs font-mono text-[#f43f5e] uppercase tracking-widest block">{analysisError}</span>
-                  </>
-                ) : status?.pairing_status === 'ready' ? (
-                  <>
-                    <Camera size={24} className="mx-auto text-zinc-600 mb-2 transition-colors duration-500 group-hover:text-zinc-400" />
-                    <span className="text-xs font-mono text-zinc-500 uppercase tracking-widest block">Awaiting Mobile Link</span>
-                    <button onClick={() => setIsPairingOpen(true)} className="text-[10px] font-mono text-zinc-400 underline mt-2 hover:text-zinc-200">Initialize Scanner</button>
-                  </>
-                ) : status?.pairing_status === 'connected' ? (
-                  <>
-                    <Radio size={24} className="mx-auto text-blue-500 mb-2 animate-pulse" />
-                    <span className="text-xs font-mono text-blue-400 uppercase tracking-widest block font-bold">Device Link Established</span>
-                    <span className="text-[10px] font-mono text-zinc-500 block mt-1 uppercase">Continue scanning on your phone...</span>
-                  </>
-                ) : (
-                  <div className="flex flex-col items-center">
-                    <div className="flex items-center gap-3 mb-2">
-                       <CheckCircle2 size={20} className="text-emerald-500" />
-                       <span className="text-sm font-mono uppercase tracking-[0.2em] text-emerald-500 font-bold">{status?.room_context?.room_type || 'ROOM'} SYNC'D</span>
+                  {activeSensorKey === 'pm25_ugm3' && (
+                    <div className="px-5 py-3 border-b border-zinc-800/50 flex gap-6 text-[11px] font-mono text-zinc-500 uppercase bg-zinc-900/10">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[9px] text-zinc-600">Fine (&gt;0.3µ)</span>
+                        <span className="text-zinc-200">{reading?.pc_0_3 ?? '--'}</span>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[9px] text-zinc-600">Small (&gt;0.5µ)</span>
+                        <span className="text-zinc-200">{reading?.pc_0_5 ?? '--'}</span>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[9px] text-zinc-600">Large (&gt;1.0µ)</span>
+                        <span className="text-zinc-200">{reading?.pc_1_0 ?? '--'}</span>
+                      </div>
                     </div>
-                    {status?.room_context?.identified_objects?.length > 0 && (
-                      <div className="flex flex-wrap justify-center gap-1.5 max-w-[280px]">
-                        {status.room_context.identified_objects.slice(0, 5).map((obj, i) => (
-                          <span key={i} className="text-[10px] font-mono bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded uppercase">{obj}</span>
+                  )}
+
+                  {/* Threshold Tiers — vertical list with more room */}
+                  <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-3">
+                    {activeMeta?.ranges.map((t, idx) => {
+                      let isActiveRange = false;
+                      if (currentActiveValue != null) {
+                        const prevMax = idx > 0 ? activeMeta.ranges[idx - 1].max : -Infinity;
+                        isActiveRange = currentActiveValue > prevMax && currentActiveValue <= t.max;
+                      }
+                      return (
+                        <div key={idx} className="group flex flex-col gap-2 mb-3">
+                          <div className="flex items-center justify-between">
+                            <span 
+                              className={`text-base font-mono uppercase tracking-widest transition-colors ${isActiveRange ? 'font-semibold' : 'text-zinc-600 group-hover:text-zinc-500'}`}
+                              style={isActiveRange ? { color: activeColor } : {}}
+                            >
+                              {t.label}
+                            </span>
+                            <span className="text-sm font-mono text-zinc-600">≤ {t.max}</span>
+                          </div>
+                          <p className={`text-base leading-snug transition-colors duration-300 ${isActiveRange ? 'text-zinc-300' : 'text-zinc-600'}`}>
+                            {t.text}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </Panel>
+
+              <ResizeHandle />
+
+              {/* ── AI Insights / Scanner ── */}
+              <Panel defaultSize={35} minSize={25}>
+                <div className="h-full flex flex-col bg-[#09090b] min-h-0">
+                  {/* Header */}
+                  <div className="px-4 py-3 border-b border-zinc-800/80 flex items-center justify-between shrink-0 bg-zinc-900/20">
+                    <span className="text-sm font-mono uppercase tracking-widest flex items-center gap-2 transition-colors duration-500" style={{ color: activeColor }}>
+                      <BrainCircuit size={16} /> Neural Diagnostics
+                    </span>
+                    <div className="flex items-center gap-3">
+                      {analysisCooldown > 0 && (
+                        <span className="text-xs font-mono text-zinc-600 uppercase">COOLDOWN: {analysisCooldown}S</span>
+                      )}
+                      <button 
+                        onClick={fetchAnalysis} 
+                        disabled={analysisLoading || analysisCooldown > 0} 
+                        className={`transition-colors ${(analysisLoading || analysisCooldown > 0) ? 'text-zinc-800' : 'text-zinc-600 hover:text-zinc-300'}`}
+                      >
+                        <RefreshCw size={16} className={analysisLoading ? 'animate-spin' : ''} />
+                      </button>
+                    </div>
+                  </div>
+
+                   {/* Scanning Visualizer */}
+                  <div className="min-h-[112px] h-auto border-b border-zinc-800/80 bg-zinc-950 relative flex items-center justify-center group py-6">
+                    <div className="absolute inset-0" style={{ backgroundImage: 'linear-gradient(#18181b 1px, transparent 1px), linear-gradient(90deg, #18181b 1px, transparent 1px)', backgroundSize: '12px 12px' }}></div>
+                    
+                    {(analysisLoading || (status?.pairing_status === 'connected' && !status?.room_context?.room_type)) && (
+                      <div className="absolute top-0 left-0 right-0 h-0.5 opacity-50 animate-[scan_3s_ease-in-out_infinite] transition-colors duration-500" style={{ backgroundColor: activeColor, boxShadow: `0 0 8px ${activeColor}` }}></div>
+                    )}
+                    
+                    <div className="relative z-10 text-center px-4 w-full">
+                      {analysisError ? (
+                        <>
+                          <AlertCircle size={20} className="mx-auto text-[#f43f5e] mb-1" />
+                          <span className="text-xs font-mono text-[#f43f5e] uppercase tracking-widest block">{analysisError}</span>
+                        </>
+                      ) : (status?.pairing_status === 'finished' || status?.room_context?.room_type) ? (
+                        <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-4 px-6 w-full">
+                          <div className="flex items-center gap-4">
+                             <CheckCircle2 size={28} className="text-emerald-500 shrink-0" />
+                             <div className="flex flex-col">
+                               <span className="text-lg font-mono uppercase tracking-[0.2em] text-emerald-500 font-bold leading-none mb-1">SCAN RECEIVED</span>
+                               <div className="text-[11px] font-mono text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+                                  Context: 
+                                  {isEditingRoomType ? (
+                                    <input 
+                                      autoFocus
+                                      className="bg-zinc-900 border border-zinc-700 text-zinc-100 px-2 py-0.5 outline-none rounded"
+                                      defaultValue={status?.room_context?.room_type}
+                                      onBlur={(e) => updateRoomType(e.target.value)}
+                                      onKeyDown={(e) => e.key === 'Enter' && updateRoomType(e.target.value)}
+                                    />
+                                  ) : (
+                                    <span 
+                                      className="text-zinc-200 cursor-pointer hover:text-white border-b border-dashed border-zinc-700"
+                                      onClick={() => setIsEditingRoomType(true)}
+                                    >
+                                      {status?.room_context?.room_type || 'UNDEFINED'}
+                                    </span>
+                                  )}
+                               </div>
+                             </div>
+                          </div>
+                          
+                          <div className="flex flex-wrap gap-2 flex-1 justify-center min-w-[200px]">
+                            {status?.room_context?.identified_objects?.length > 0 && (
+                              <>
+                                {status.room_context.identified_objects.map((obj, i) => (
+                                  <span key={i} className="group/tag relative text-[10px] font-mono bg-zinc-800/50 text-zinc-300 px-2 py-1 rounded uppercase border border-zinc-700/30 flex items-center gap-1.5 whitespace-nowrap">
+                                    {obj}
+                                    <button 
+                                      onClick={() => removeObject(i)}
+                                      className="text-zinc-600 hover:text-rose-400 transition-colors ml-0.5 text-xs"
+                                    >
+                                      ×
+                                    </button>
+                                  </span>
+                                ))}
+                                <div className="flex items-center ml-2">
+                                  <input 
+                                    placeholder="+ ITEM"
+                                    className="bg-transparent border-b border-zinc-800 text-[10px] font-mono w-16 outline-none text-zinc-500 focus:text-zinc-300 transition-colors"
+                                    value={newObjectInput}
+                                    onChange={(e) => setNewObjectInput(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && addObject()}
+                                  />
+                                </div>
+                              </>
+                            )}
+                          </div>
+                          
+                          <button 
+                            onClick={() => {
+                              resetPairing();
+                              setIsPairingOpen(true);
+                            }} 
+                            className="text-[10px] font-mono text-zinc-500 hover:text-zinc-300 uppercase underline decoration-zinc-800 underline-offset-4 shrink-0"
+                          >
+                            Rescan Room
+                          </button>
+                        </div>
+                      ) : status?.pairing_status === 'connected' ? (
+                        <div className="flex items-center gap-6 px-6">
+                          <Radio size={32} className="text-blue-500 animate-pulse shrink-0" />
+                          <div className="flex flex-col text-left">
+                            <span className="text-sm font-mono text-blue-400 uppercase tracking-widest block font-bold">Device Link Established</span>
+                            <span className="text-xs font-mono text-zinc-500 block mt-0.5 uppercase">Continue scanning on your phone...</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-6 px-6">
+                          <Camera size={32} className="text-zinc-600 transition-colors duration-500 group-hover:text-zinc-400 shrink-0" />
+                          <div className="flex flex-col text-left">
+                            <span className="text-base font-mono text-zinc-500 uppercase tracking-widest block">Awaiting Mobile Link</span>
+                            <button onClick={() => setIsPairingOpen(true)} className="text-xs font-mono text-zinc-400 underline mt-1 hover:text-zinc-200 text-left">Initialize Scanner</button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* System Summary */}
+                  <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
+                    <span className="text-sm font-mono text-zinc-500 uppercase tracking-widest mb-4 block">AI Analysis</span>
+                    <p className="text-lg text-zinc-300 leading-relaxed font-sans tracking-tight mb-5">
+                      <span className="font-mono mr-2 transition-colors duration-500" style={{ color: activeColor }}>{'>'}</span>
+                      {analysis.summary || "Run analysis to process environmental payload against neural matrix."}
+                    </p>
+                    {analysis.flags?.length > 0 && (
+                      <div className="pt-5 border-t border-zinc-800/50 space-y-3">
+                        {analysis.flags.map((flag, i) => (
+                          <div key={i} className="text-base font-mono text-zinc-400">
+                            <span className="text-zinc-600 mr-2">−</span> {typeof flag === 'string' ? flag : flag.message || flag.label || JSON.stringify(flag)}
+                          </div>
                         ))}
                       </div>
                     )}
-                    <button onClick={resetPairing} className="text-[10px] font-mono text-zinc-500 hover:text-zinc-300 uppercase mt-3 border border-zinc-800 px-3 py-1 rounded">New Scan</button>
                   </div>
-                )}
+                </div>
+              </Panel>
+            </PanelGroup>
+          </Panel>
+
+          <ResizeHandle direction="vertical" />
+
+          <Panel defaultSize={52} minSize={20}>
+            <div className="h-full flex flex-col min-h-0 bg-zinc-950">
+              <div className="flex-1 grid grid-cols-12 grid-flow-dense gap-[2px] bg-zinc-800 overflow-hidden">
+                    {Object.keys(SENSOR_META).map((key, idx) => {
+                      const meta = SENSOR_META[key];
+                      const isActive = activeSensorKey === key;
+                      const isExpanded = expandedSensorKey === key;
+                      const rawVal = reading?.[key];
+                      const numericVal = rawVal != null ? (CONVERSIONS[key]?.[unitSystem]?.convert(rawVal) ?? rawVal) : null;
+                      
+                      return (
+                        <motion.div 
+                          layout
+                          transition={{
+                            layout: { type: 'spring', damping: 25, stiffness: 120 }
+                          }}
+                          key={key} 
+                          onClick={() => {
+                            setActiveSensorKey(key);
+                            setExpandedSensorKey(isExpanded ? null : key);
+                          }}
+                          className={`relative bg-[#09090b] p-4 flex flex-col group overflow-hidden cursor-pointer border border-transparent hover:border-zinc-800 ${
+                            isExpanded ? 'col-span-12 md:col-span-8 row-span-2 shadow-2xl z-30 order-first' : 'col-span-4 order-none'
+                          } ${isActive ? 'bg-zinc-900/40' : ''}`}
+                        >
+                          <div className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-500 pointer-events-none" style={{ background: `radial-gradient(circle at top right, ${meta.iconColor}, transparent 70%)` }}></div>
+                          {isActive && <div className="absolute top-0 left-0 right-0 h-[1px]" style={{ backgroundColor: meta.iconColor, boxShadow: `0 0 8px ${meta.iconColor}`}}></div>}
+                          
+                          <div className="flex justify-between items-start z-10 shrink-0">
+                            <div className="flex items-center gap-2">
+                              <meta.icon size={16} style={{ color: isActive ? meta.iconColor : '#71717a' }} />
+                              <span className={`text-xs xl:text-sm font-mono tracking-widest ${isActive ? 'text-zinc-200' : 'text-zinc-400'}`}>{meta.shortLabel}</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                               <span className={`text-[11px] xl:text-xs font-mono px-2 py-0.5 rounded-sm border ${isActive ? 'border-zinc-600 text-zinc-300' : 'border-zinc-800 text-zinc-600'}`}>{rawVal != null ? meta.getStatus(rawVal) : 'OFF'}</span>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-baseline gap-1 mt-3 z-10 shrink-0">
+                            <span className={`text-4xl xl:text-5xl font-light tracking-tighter transition-all duration-500 ${isExpanded ? 'text-5xl xl:text-7xl' : ''} ${isActive ? 'text-white' : 'text-zinc-300'}`}>
+                              {numericVal != null ? <AnimatedNumber value={numericVal} decimals={1} /> : '--'}
+                            </span>
+                            <span className="text-sm xl:text-base font-mono text-zinc-500">{CONVERSIONS[key]?.[unitSystem]?.unit || meta.unit}</span>
+                          </div>
+                        {key === 'pm25_ugm3' && (
+                          <div className="absolute bottom-1.5 right-4 flex gap-1.5 text-[8px] xl:text-[9px] font-mono text-zinc-500 uppercase z-20 bg-zinc-950/90 px-2 py-0.5 rounded-sm border border-zinc-800/80">
+                             <span className="text-zinc-400 font-bold tracking-widest">PART:</span>
+                             <span>0.3µ:{reading?.pc_0_3 ?? '--'}</span>
+                             <span className="text-zinc-800">|</span>
+                             <span>0.5µ:{reading?.pc_0_5 ?? '--'}</span>
+                             <span className="text-zinc-800">|</span>
+                             <span>1.0µ:{reading?.pc_1_0 ?? '--'}</span>
+                          </div>
+                        )}
+                        <div className="flex-1 min-h-0 pt-1 z-10 pr-2">
+                          <AreaChart 
+                            history={history} 
+                            sensorKey={key} 
+                            color={meta.iconColor} 
+                            unitSystem={unitSystem} 
+                            isExpanded={isExpanded}
+                          />
+                        </div>
+                      </motion.div>
+                    )
+                  })}
               </div>
             </div>
-
-            {/* System Summary */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
-              <span className="text-sm font-mono text-zinc-500 uppercase tracking-widest mb-4 block">AI Analysis</span>
-              <p className="text-lg text-zinc-300 leading-relaxed font-sans tracking-tight mb-5">
-                <span className="font-mono mr-2 transition-colors duration-500" style={{ color: activeColor }}>{'>'}</span>
-                {analysis.summary || "Run analysis to process environmental payload against neural matrix."}
-              </p>
-              {analysis.flags?.length > 0 && (
-                <div className="pt-5 border-t border-zinc-800/50 space-y-3">
-                  {analysis.flags.map((flag, i) => (
-                    <div key={i} className="text-base font-mono text-zinc-400">
-                      <span className="text-zinc-600 mr-2">−</span> {typeof flag === 'string' ? flag : flag.message || flag.label || JSON.stringify(flag)}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* ═══ BOTTOM BAND: Full-Width Telemetry Grid ═══ */}
-        <div className="flex-1 flex flex-col min-h-0 bg-zinc-950">
-          <div className="px-5 py-4 border-b border-zinc-800/80 flex justify-between items-center bg-[#09090b] shrink-0">
-            <span className="text-sm font-mono text-zinc-500 uppercase tracking-widest flex items-center gap-2">
-              <Activity size={16} /> Live Telemetry Feed
-            </span>
-            {lastFetch && (
-              <span className="text-xs font-mono text-zinc-600 uppercase">SYNC: {lastFetch.toLocaleTimeString()}</span>
-            )}
-          </div>
-          
-          <div className="flex-1 grid grid-cols-12 gap-x-[3px] gap-y-[6px] p-[3px] bg-zinc-800/40 overflow-hidden">
-              {Object.keys(SENSOR_META).map((key, idx) => {
-                const meta = SENSOR_META[key];
-                const isActive = activeSensorKey === key;
-                const rawVal = reading?.[key];
-                const numericVal = rawVal != null ? (CONVERSIONS[key]?.[unitSystem]?.convert(rawVal) ?? rawVal) : null;
-                
-                return (
-                  <div 
-                    key={key} 
-                    onClick={() => setActiveSensorKey(key)}
-                    className={`col-span-4 bg-[#09090b] relative p-4 flex flex-col group overflow-hidden cursor-pointer transition-colors ${isActive ? 'bg-zinc-900/40' : ''}`}
-                  >
-                    <div className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-500 pointer-events-none" style={{ background: `radial-gradient(circle at top right, ${meta.iconColor}, transparent 70%)` }}></div>
-                    {isActive && <div className="absolute top-0 left-0 right-0 h-[1px]" style={{ backgroundColor: meta.iconColor, boxShadow: `0 0 8px ${meta.iconColor}`}}></div>}
-                    
-                    <div className="flex justify-between items-start z-10 shrink-0">
-                      <div className="flex items-center gap-2">
-                        <meta.icon size={16} style={{ color: isActive ? meta.iconColor : '#71717a' }} />
-                        <span className={`text-xs xl:text-sm font-mono tracking-widest ${isActive ? 'text-zinc-200' : 'text-zinc-400'}`}>{meta.shortLabel}</span>
-                      </div>
-                      <span className={`text-[11px] xl:text-xs font-mono px-2 py-0.5 rounded-sm border ${isActive ? 'border-zinc-600 text-zinc-300' : 'border-zinc-800 text-zinc-600'}`}>{rawVal != null ? meta.getStatus(rawVal) : 'OFF'}</span>
-                    </div>
-                    <div className="flex items-baseline gap-1 mt-3 z-10 shrink-0">
-                      <span className={`text-4xl xl:text-5xl font-light tracking-tighter ${isActive ? 'text-white' : 'text-zinc-300'}`}>
-                        {numericVal != null ? <AnimatedNumber value={numericVal} decimals={1} /> : '--'}
-                      </span>
-                      <span className="text-sm xl:text-base font-mono text-zinc-500">{CONVERSIONS[key]?.[unitSystem]?.unit || meta.unit}</span>
-                    </div>
-                     {key === 'pm25_ugm3' && (
-                      <div className="flex gap-2 text-[9px] xl:text-[10px] font-mono text-zinc-500 uppercase mt-2 z-10 w-full tracking-tighter">
-                         <span className="text-zinc-400 font-bold">[PART.]</span>
-                         <span>&gt;0.3u: {reading?.pc_0_3 ?? '--'}</span>
-                         <span className="text-zinc-700">|</span>
-                         <span>&gt;0.5u: {reading?.pc_0_5 ?? '--'}</span>
-                         <span className="text-zinc-700">|</span>
-                         <span>&gt;1.0u: {reading?.pc_1_0 ?? '--'}</span>
-                      </div>
-                    )}
-                    <div className="flex-1 min-h-0 pt-1 z-10 pr-2">
-                      <AreaChart history={history} sensorKey={key} color={meta.iconColor} unitSystem={unitSystem} />
-                    </div>
-                  </div>
-                )
-              })}
-          </div>
-        </div>
-
+          </Panel>
+        </PanelGroup>
       </main>
 
       {/* ──────────── SETTINGS DRAWER ──────────── */}
@@ -856,8 +1125,8 @@ export default function App() {
           <aside className="fixed top-0 left-0 bottom-0 z-50 w-full max-w-[380px] bg-[#09090b] border-r border-zinc-800 shadow-2xl p-6 flex flex-col overflow-y-auto custom-scrollbar animate-[slideIn_0.2s_ease-out]">
             <div className="flex items-center justify-between mb-8 border-b border-zinc-800 pb-4">
               <div className="flex items-center gap-3">
-                <Cpu className="text-zinc-500" size={18}/>
-                <h3 className="text-sm font-mono uppercase tracking-widest text-zinc-100 m-0">Neural Engine</h3>
+                <Settings2 className="text-zinc-500" size={18}/>
+                <h3 className="text-sm font-mono uppercase tracking-widest text-zinc-100 m-0">Settings</h3>
               </div>
               <button onClick={() => setIsTechOpen(false)} className="text-zinc-500 hover:text-zinc-300 transition-colors">
                 <X size={20} />
@@ -865,30 +1134,46 @@ export default function App() {
             </div>
 
             <div className="mb-8">
-              <h4 className="text-xs font-mono uppercase tracking-widest text-zinc-500 mb-4">Neural Override {scenarios.length > 0 ? `(${scenarios.length})` : '(Loading...)'}</h4>
-              <div className="flex flex-col gap-2">
-                <button
-                  onClick={() => selectScenario('live')}
-                  className={`flex items-center justify-between p-3 rounded border font-mono text-xs uppercase tracking-widest transition-colors ${!manualScenarioId || manualScenarioId === 'live' ? 'border-[#10b981] bg-[#10b981]/10 text-[#10b981]' : 'border-zinc-800 bg-zinc-900/50 text-zinc-400 hover:bg-zinc-800'}`}
-                >
-                  <span className="flex items-center gap-2"><Radio size={16} /> Live Hardware Feed</span>
-                  <ChevronRight size={16} />
-                </button>
-                {scenarios.map(s => (
-                  <button
-                    key={s.id} onClick={() => selectScenario(s.id)}
-                    className={`flex items-center justify-between p-3 rounded border font-mono text-xs uppercase tracking-widest transition-colors ${manualScenarioId === s.id ? 'border-[#0ea5e9] bg-[#0ea5e9]/10 text-[#0ea5e9]' : 'border-zinc-800 bg-zinc-900/50 text-zinc-400 hover:bg-zinc-800'}`}
-                  >
-                    <span className="flex items-center gap-2"><span className="text-base">{s.icon}</span> {s.name}</span>
-                    <ChevronRight size={16} />
-                  </button>
-                ))}
+              <h4 className="text-xs font-mono uppercase tracking-widest text-zinc-500 mb-4">System Status</h4>
+              <div className="bg-zinc-900/50 rounded border border-zinc-800 p-4 space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] font-mono text-zinc-500 uppercase">Last Data Sync</span>
+                  <span className="text-[10px] font-mono text-zinc-300">{lastFetch ? lastFetch.toLocaleTimeString() : '---'}</span>
+                </div>
+                <div className="flex justify-between items-center pt-3 border-t border-zinc-800/50">
+                   <span className="text-[10px] font-mono text-zinc-500 uppercase">Active Source</span>
+                   <span className="text-[10px] font-mono text-zinc-300 uppercase tracking-wider">[{activeMonitorId === 'simulation' ? 'SIMULATOR' : 'HARDWARE'}]</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mb-8">
+              <h4 className="text-xs font-mono uppercase tracking-widest text-zinc-500 mb-4">Preferences</h4>
+              <div className="flex items-center justify-between p-3 rounded border border-zinc-800 bg-zinc-900/50">
+                <span className="text-xs font-mono uppercase tracking-widest text-zinc-400">Unit System</span>
+                <div className="flex items-center bg-zinc-950 border border-zinc-800 rounded px-1 py-0.5">
+                  {['metric', 'imperial'].map(sys => (
+                    <button
+                      key={sys}
+                      onClick={() => setUnitSystem(sys)}
+                      className={`px-3 py-1 text-[11px] font-mono uppercase tracking-wider rounded transition-colors ${
+                        unitSystem === sys ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-500 hover:text-zinc-400'
+                      }`}
+                    >
+                      {sys}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
             <div className="mb-8 flex-1">
-              <h4 className="text-xs font-mono uppercase tracking-widest text-zinc-500 mb-4">Calculation Log</h4>
-              <div className="bg-zinc-950 p-4 rounded border border-zinc-800 font-mono text-xs leading-relaxed text-zinc-500 max-h-[240px] overflow-y-auto custom-scrollbar">
+              <div className="flex items-center gap-2 mb-4">
+                <Cpu className="text-zinc-500" size={14}/>
+                <h4 className="text-xs font-mono uppercase tracking-widest text-zinc-500 m-0">Neural Engine</h4>
+              </div>
+              <h5 className="text-[10px] font-mono uppercase tracking-widest text-zinc-600 mb-2">Calculation Log</h5>
+              <div className="bg-zinc-900/50 p-4 rounded border border-zinc-800 font-mono text-xs leading-relaxed text-zinc-500 max-h-[240px] overflow-y-auto custom-scrollbar">
                 {status?.breakdown ? (
                   <div>
                     <div className="text-[#0ea5e9] mb-2">// Health Algorithm (MLP)</div>

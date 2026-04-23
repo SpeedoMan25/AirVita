@@ -43,3 +43,22 @@ body {
   0%   { top: 0%; }
   100% { top: 100%; }
 }
+
+@keyframes danger-pulse {
+  0%   { background-color: rgba(244, 63, 94, 0.1); border-color: rgba(244, 63, 94, 0.2); }
+  50%  { background-color: rgba(244, 63, 94, 0.5); border-color: rgba(244, 63, 94, 0.8); box-shadow: 0 0 15px rgba(244, 63, 94, 0.4); }
+  100% { background-color: rgba(244, 63, 94, 0.1); border-color: rgba(244, 63, 94, 0.2); }
+}
+
+.animate-danger {
+  animation: danger-pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes atmosphere-hum {
+  0%, 100% { opacity: 0.25; filter: blur(40px); transform: scale(1); }
+  50% { opacity: 0.55; filter: blur(60px); transform: scale(1.05); }
+}
+
+.animate-hum {
+  animation: atmosphere-hum 6s ease-in-out infinite;
+}
