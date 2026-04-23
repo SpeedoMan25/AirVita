@@ -72,11 +72,6 @@ def generate_synthetic_data(num_samples=5000):
     return pd.DataFrame(data)
 
 def train_model():
-    print(f"Loading dataset from {DATASET_PATH}...")
-    if not DATASET_PATH.exists():
-        print(f"Error: Dataset not found at {DATASET_PATH}")
-        return
-
     # Load data
     csv_data = pd.DataFrame()
     if DATASET_PATH.exists():
@@ -85,6 +80,9 @@ def train_model():
         # Filter CSV data to 1-99 range (remove the >200 outliers)
         csv_data = csv_data[(csv_data[TARGET] >= 1) & (csv_data[TARGET] <= 99)]
         print(f"Retained {len(csv_data)} rows from CSV after filtering outliers.")
+    else:
+        print(f"Warning: Dataset not found at {DATASET_PATH}. Proceeding with synthetic calibration data only.")
+
     
     # Generate Synthetic Data
     synthetic_data = generate_synthetic_data(30000)
