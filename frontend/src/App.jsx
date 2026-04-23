@@ -9,7 +9,7 @@ import RoomScanner from './components/RoomScanner'
 import MobilePairing from './components/MobilePairing'
 
 const API_BASE = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || '')
-const POLL_INTERVAL_MS = 2000
+const POLL_INTERVAL_MS = 500
 
 /* ═══════════════════════════════════════════════════
    HUD SENSOR & ACTIVITY METADATA
@@ -252,16 +252,50 @@ const AreaChart = ({ history, sensorKey, color, unitSystem }) => {
 
   if (data.length === 0) return null;
 
-  const min = Math.min(...data);
-  const max = Math.max(...data);
-  const range = max - min || 1;
-  const points = data.map((val, i) => {
+  const baseRanges = {
+    temperature_c: 0.5,
+    humidity_pct: 1,
+    light_lux: 10,
+    noise_db: 8,
+    pressure_hpa: 0.5,
+    pm25_ugm3: 1
+  };
+  
+  let minRangeVal = baseRanges[sensorKey] || 5;
+  const rangeConv = CONVERSIONS[sensorKey]?.[unitSystem];
+  if (rangeConv) {
+    minRangeVal = Math.abs(rangeConv.convert(minRangeVal) - rangeConv.convert(0));
+  }
+
+  let min = Math.min(...data);
+  let max = Math.max(...data);
+  let range = max - min;
+
+  // Enforce a minimum scale range relative to each metric
+  if (range < minRangeVal) {
+    const center = (max + min) / 2 || 0;
+    min = center - (minRangeVal / 2);
+    max = center + (minRangeVal / 2);
+    range = minRangeVal;
+  }
+
+  const getXY = (val, i) => {
     const x = (i / Math.max(data.length - 1, 1)) * 100;
     const y = 100 - (((val - min) / range) * 90 + 5);
-    return `${x},${y}`;
-  }).join(' ');
+    return [x, y];
+  };
 
-  const areaPoints = `0,100 ${points} 100,100`;
+  let pathD = `M ${getXY(data[0], 0).join(',')}`;
+  for (let i = 0; i < data.length - 1; i++) {
+    const [x0, y0] = getXY(data[i], i);
+    const [x1, y1] = getXY(data[i + 1], i + 1);
+    const cx1 = x0 + (x1 - x0) * 0.15;
+    const cx2 = x1 - (x1 - x0) * 0.15;
+    pathD += ` C ${cx1},${y0} ${cx2},${y1} ${x1},${y1}`;
+  }
+
+  const areaD = `${pathD} L 100,100 L 0,100 Z`;
+  const lastPoint = getXY(data[data.length - 1], data.length - 1);
 
   return (
     <div className="w-full h-full relative">
@@ -273,9 +307,9 @@ const AreaChart = ({ history, sensorKey, color, unitSystem }) => {
           </linearGradient>
         </defs>
         <path d="M0,25 L100,25 M0,50 L100,50 M0,75 L100,75" stroke="#27272a" strokeWidth="0.5" fill="none" />
-        <polygon points={areaPoints} fill={`url(#grad-${sensorKey})`} />
-        <polyline points={points} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="miter" />
-        <circle cx="100" cy={100 - (((data[data.length - 1] - min) / range) * 90 + 5)} r="2" fill={color} className="animate-pulse" />
+        <path d={areaD} fill={`url(#grad-${sensorKey})`} style={{ transition: 'all 500ms linear' }} />
+        <path d={pathD} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" style={{ transition: 'all 500ms linear' }} />
+        <circle cx={lastPoint[0]} cy={lastPoint[1]} r="2" fill={color} style={{ transition: 'all 500ms linear' }} className="animate-pulse" />
       </svg>
     </div>
   );
@@ -363,8 +397,8 @@ export default function App() {
       const data = await res.json()
       setMonitorsList(data)
       
-      // Auto-select first Live monitor if currently on simulation
-      if (activeMonitorId === 'simulation') {
+      // Auto-select first Live monitor if currently on simulation AND no active preset
+      if (activeMonitorId === 'simulation' && (!manualScenarioId || manualScenarioId === 'live')) {
         const firstLive = data.find(m => m.id !== 'simulation')
         if (firstLive) {
           setActiveMonitorId(firstLive.id)
@@ -372,7 +406,7 @@ export default function App() {
         }
       }
     } catch (err) { console.error(err) }
-  }, [activeMonitorId])
+  }, [activeMonitorId, manualScenarioId])
 
   const fetchScenarios = useCallback(async () => {
     try {
@@ -384,9 +418,21 @@ export default function App() {
     } catch (err) { console.error(err) }
   }, [])
 
-  const selectScenario = async (id) => {
+  const selectScenario = async (id, overrideMonitorId = null) => {
     try {
       setManualScenarioId(id)
+      
+      if (id === 'live') {
+        if (overrideMonitorId) {
+          setActiveMonitorId(overrideMonitorId);
+        } else {
+          const firstLive = monitorsList.find(m => m.id !== 'simulation');
+          if (firstLive) setActiveMonitorId(firstLive.id);
+        }
+      } else {
+        setActiveMonitorId('simulation');
+      }
+
       await fetch(`${API_BASE}/api/scenarios/select`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -531,9 +577,9 @@ export default function App() {
           <div className="hidden sm:flex items-center gap-4 font-mono text-xs text-zinc-500 uppercase tracking-widest">
             <span className="flex items-center gap-1.5">
               <Radio size={12} className={connected ? "text-[#10b981] animate-pulse" : "text-zinc-600"}/> 
-              SYS: {connected ? 'ONLINE' : 'OFFLINE'}
+              SERVER: {connected ? 'CONNECTED' : 'DISCONNECTED'}
             </span>
-            <span>UPLINK: SECURE</span>
+            <span>STREAM: {connected ? 'ACTIVE' : 'PAUSED'}</span>
           </div>
         </div>
 
@@ -553,11 +599,23 @@ export default function App() {
           </div>
 
           <select
-            value={activeMonitorId}
-            onChange={e => setActiveMonitorId(e.target.value)}
+            value={activeMonitorId === 'simulation' ? '' : activeMonitorId}
+            onChange={e => {
+              const newId = e.target.value;
+              if (activeMonitorId === 'simulation') {
+                selectScenario('live', newId);
+              } else {
+                setActiveMonitorId(newId);
+              }
+            }}
             className="bg-zinc-900 border border-zinc-700 text-zinc-200 text-xs font-mono uppercase tracking-widest rounded px-3 py-1.5 outline-none cursor-pointer focus:border-emerald-500 focus:bg-zinc-800"
           >
-            {monitorsList.map(m => (
+            {activeMonitorId === 'simulation' && (
+              <option value="" disabled className="bg-zinc-900 text-zinc-500">
+                -- SIMULATION ACTIVE --
+              </option>
+            )}
+            {monitorsList.filter(m => m.id !== 'simulation').map(m => (
               <option key={m.id} value={m.id} className="bg-zinc-900 text-zinc-200">
                 {m.connected ? '●' : '○'} {m.name}
               </option>
@@ -570,8 +628,7 @@ export default function App() {
             className="hidden md:block bg-zinc-900 border border-zinc-700 text-zinc-200 text-xs font-mono uppercase tracking-widest rounded px-3 py-1.5 outline-none cursor-pointer focus:border-zinc-500 focus:bg-zinc-800"
           >
             <option value="live" className="bg-zinc-900 text-zinc-200">Mode: Hardware</option>
-            <option value="simulation" className="bg-zinc-900 text-zinc-200">Mode: Simulation</option>
-            {scenarios.map(s => <option key={s.id} value={s.id} className="bg-zinc-900 text-zinc-200">Preset: {s.name}</option>)}
+            {scenarios.map(s => <option key={s.id} value={s.id} className="bg-zinc-900 text-zinc-200">Simulation: {s.name}</option>)}
           </select>
 
           <div className="flex items-center border-l border-zinc-800/80 h-full pl-4 gap-4">
@@ -771,6 +828,16 @@ export default function App() {
                       </span>
                       <span className="text-sm xl:text-base font-mono text-zinc-500">{CONVERSIONS[key]?.[unitSystem]?.unit || meta.unit}</span>
                     </div>
+                     {key === 'pm25_ugm3' && (
+                      <div className="flex gap-2 text-[9px] xl:text-[10px] font-mono text-zinc-500 uppercase mt-2 z-10 w-full tracking-tighter">
+                         <span className="text-zinc-400 font-bold">[PART.]</span>
+                         <span>&gt;0.3u: {reading?.pc_0_3 ?? '--'}</span>
+                         <span className="text-zinc-700">|</span>
+                         <span>&gt;0.5u: {reading?.pc_0_5 ?? '--'}</span>
+                         <span className="text-zinc-700">|</span>
+                         <span>&gt;1.0u: {reading?.pc_1_0 ?? '--'}</span>
+                      </div>
+                    )}
                     <div className="flex-1 min-h-0 pt-1 z-10 pr-2">
                       <AreaChart history={history} sensorKey={key} color={meta.iconColor} unitSystem={unitSystem} />
                     </div>

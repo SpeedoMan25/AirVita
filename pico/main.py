@@ -94,11 +94,23 @@ def dim_red():
 def parse_pms_data(data):
     if len(data) < 32: return None
     if data[0] != 0x42 or data[1] != 0x4D: return None
+    
+    check = sum(data[:30])
+    calc_check = (data[30] << 8) | data[31]
+    if check != calc_check:
+        return None
+
     # Atmospheric environment readings (ug/m3)
     pm1_0 = (data[10] << 8) | data[11]
     pm2_5 = (data[12] << 8) | data[13]
     pm10  = (data[14] << 8) | data[15]
-    return pm1_0, pm2_5, pm10
+    
+    # Particle counts per 0.1L of air
+    pc_0_3 = (data[16] << 8) | data[17]
+    pc_0_5 = (data[18] << 8) | data[19]
+    pc_1_0 = (data[20] << 8) | data[21]
+    
+    return pm1_0, pm2_5, pm10, pc_0_3, pc_0_5, pc_1_0
 
 def get_audio_metrics(baseline):
     bytes_read = mic.readinto(read_buf)
@@ -155,6 +167,7 @@ def main():
     lcd, env, light = setup()
     baseline = 0
     pm1_0, pm2_5, pm10 = 0, 0, 0
+    pc_0_3, pc_0_5, pc_1_0 = 0, 0, 0
     last_env_update = 0
     neo_offset = 0
     
@@ -178,11 +191,16 @@ def main():
                 if light:
                     lux = light.read()
                 
-                if pms_uart.any() >= 32:
-                    raw_pms = pms_uart.read(32)
-                    parsed_pm = parse_pms_data(raw_pms)
-                    if parsed_pm is not None:
-                        pm1_0, pm2_5, pm10 = parsed_pm
+                if pms_uart.any() > 0:
+                    buffer = pms_uart.read()
+                    if buffer is not None:
+                        for i in range(len(buffer) - 31, -1, -1):
+                            if buffer[i] == 0x42 and buffer[i+1] == 0x4D:
+                                packet = buffer[i:i+32]
+                                parsed_pm = parse_pms_data(packet)
+                                if parsed_pm is not None:
+                                    pm1_0, pm2_5, pm10, pc_0_3, pc_0_5, pc_1_0 = parsed_pm
+                                    break
                 
                 # Update LCD
                 if lcd:
@@ -208,6 +226,9 @@ def main():
                 "pm1_0": pm1_0,
                 "pm2_5": pm2_5,
                 "pm10": pm10,
+                "pc_0_3": pc_0_3,
+                "pc_0_5": pc_0_5,
+                "pc_1_0": pc_1_0,
                 "particulates": pm2_5,
                 "vocs": g / 1000.0 if g else 0,
                 "timestamp_ms": time.ticks_ms()

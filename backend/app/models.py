@@ -20,6 +20,12 @@ class SensorReading(BaseModel):
     noise_db: Optional[float] = Field(None, description="Noise level in decibels")
     pressure_hpa: Optional[float] = Field(None, description="Atmospheric pressure in hPa")
     pm25_ugm3: Optional[float] = Field(None, description="PM2.5 particulate matter in µg/m³")
+    
+    pm1_0: Optional[float] = Field(None, description="PM1.0 mass concentration")
+    pm10: Optional[float] = Field(None, description="PM10.0 mass concentration")
+    pc_0_3: Optional[int] = Field(None, description="Raw count of particles > 0.3um per 0.1L")
+    pc_0_5: Optional[int] = Field(None, description="Raw count of particles > 0.5um per 0.1L")
+    pc_1_0: Optional[int] = Field(None, description="Raw count of particles > 1.0um per 0.1L")
 
     pot_pct: float = Field(0.0, description="Potentiometer setting percentage")
     device_id: str = Field("unknown", description="ID of the device that generated this reading")

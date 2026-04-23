@@ -102,6 +102,12 @@ def predict_score(data: dict) -> dict:
     base_score = float(model.predict(scaled)[0])
     
     pm25 = data.get("pm25_ugm3", data.get("particulates", 0))
+    pm1_0 = data.get("pm1_0", 0)
+    pm10 = data.get("pm10", 0)
+    
+    pc_0_3 = data.get("pc_0_3", 0)
+    pc_0_5 = data.get("pc_0_5", 0)
+    pc_1_0 = data.get("pc_1_0", 0)
     
     # Calculate penalty components
     pm25_penalty = pm25 * COEFF_PARTICLES
@@ -119,6 +125,11 @@ def predict_score(data: dict) -> dict:
             "noise_db": features_raw[7],
             "pressure_hpa": features_raw[1],
             "pm25_ugm3": pm25,
+            "pm1_0": pm1_0,
+            "pm10": pm10,
+            "pc_0_3": pc_0_3,
+            "pc_0_5": pc_0_5,
+            "pc_1_0": pc_1_0,
         }
     }
 
@@ -219,11 +230,16 @@ async def run_data_generator():
                     "light": jitter(s["inputs"]["light"]), 
                     "temperature": jitter(s["inputs"]["temperature"]),
                     "sound_amp": jitter(s["inputs"]["noise"]),
-                    "particulates": jitter(s["inputs"]["particulates"])
+                    "particulates": jitter(s["inputs"]["particulates"]),
+                    "pm1_0": jitter(s["inputs"]["particulates"] * 0.4),
+                    "pm10": jitter(s["inputs"]["particulates"] * 2.1),
+                    "pc_0_3": int(jitter(s["inputs"]["particulates"] * 300)),
+                    "pc_0_5": int(jitter(s["inputs"]["particulates"] * 100)),
+                    "pc_1_0": int(jitter(s["inputs"]["particulates"] * 20))
                 }
                 update_status_from_dict(payload, device_id="simulation")
         
-        await asyncio.sleep(2)
+        await asyncio.sleep(0.5)
 
 def get_unique_room_name(room_type: str, current_device_id: str) -> str:
     """Calculates a unique name for a room, adding a number if duplicates exist."""
@@ -245,9 +261,10 @@ def update_status_from_dict(payload_data: dict, device_id: str = "simulation"):
     
     if device_id not in monitors:
         print(f"📡 New Device Detected: {device_id}. Auto-registering...")
+        display_name = "Simulation" if device_id == "simulation" else (f"Unit {device_id[-4:]}" if len(device_id) > 4 else f"Unit {device_id}")
         monitors[device_id] = RoomStatus(
             device_id=device_id,
-            display_name=f"Unit {device_id[-4:]}" if len(device_id) > 4 else f"Unit {device_id}",
+            display_name=display_name,
             pairing_status="completed",
             connected=True
         )
