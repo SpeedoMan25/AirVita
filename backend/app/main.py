@@ -163,6 +163,10 @@ async def lifespan(app: FastAPI):
     # Start background task for data generation
     generator_task = asyncio.create_task(run_data_generator())
     
+    # Start serial listener for hardware connections
+    from app.serial_reader import run_serial_listener
+    serial_task = asyncio.create_task(run_serial_listener())
+    
     # Print LAN-accessible URLs banner
     ip = get_lan_ip()
     frontend_url = f"https://{ip}:5173"
@@ -180,6 +184,7 @@ async def lifespan(app: FastAPI):
     
     yield
     generator_task.cancel()
+    serial_task.cancel()
 
 
 async def run_data_generator():

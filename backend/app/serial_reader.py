@@ -89,7 +89,6 @@ async def run_serial_listener() -> None:
     Reads lines from the USB serial port (or generates mock data)
     and updates the in-memory application state.
     """
-    global _current_status
     use_mock = os.getenv("MOCK_SERIAL", "false").lower() in ("true", "1", "yes")
     port = os.getenv("SERIAL_PORT", "COM3")
     baud = int(os.getenv("SERIAL_BAUD", "115200"))
@@ -116,24 +115,19 @@ async def run_serial_listener() -> None:
                 if ser is None or not ser.is_open:
                     ser = serial.Serial(port, baud, timeout=1)
                     logger.info(f"✅ Serial port {port} opened")
-                    _current_status = _current_status.model_copy(
-                        update={"connected": True}
-                    )
 
-                raw = ser.readline()
+                # Read from serial in a separate thread so we don't block the FastAPI event loop!
+                raw = await asyncio.to_thread(ser.readline)
+                
                 if raw:
                     line = raw.decode("utf-8", errors="replace").strip()
                     if line:
                         await _process_line(line)
                 else:
-                    # Optional: mark disconnected if no data for a while
-                    pass
+                    await asyncio.sleep(0.01)
 
             except serial.SerialException as e:
                 logger.error(f"Serial error: {e}. Retrying in 3s...")
-                _current_status = _current_status.model_copy(
-                    update={"connected": False}
-                )
                 if ser and ser.is_open:
                     ser.close()
                 ser = None

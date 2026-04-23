@@ -82,41 +82,28 @@ To build the primary edge device, you will need:
 ### Prerequisites
 - Python 3.11+
 - Node.js 18+
-- Docker & Docker Compose (Optional, for containerized deployments)
+- Docker & Docker Compose (Optional, for simulation only)
 
-### 1. Execute the Backend Server
-
-Navigate to the backend directory and install the required dependencies.
-
+### 1. Prepare the Hardware (Raspberry Pi Pico)
+Your Pico must be running the JSON telemetry firmware, not the text-based dashboard. If you need to flash the correct firmware to the Pico, you can do so automatically via the command line (adjust COM6 to your port):
 ```bash
-cd backend
-pip install -r requirements.txt
+pip install mpremote
+python -m mpremote connect COM6 fs cp pico\main.py :main.py
+python -m mpremote connect COM6 reset
 ```
 
-Start the backend. If no physical hardware is connected, use the mock generator:
+### 2. Run Locally (One-Click Native Script)
+Because Docker Desktop on Windows/macOS does not natively support USB passthrough, the easiest way to run the full stack with live hardware is natively on your machine.
 
-```bash
-# Development mode with simulated telemetry:
-MOCK_SERIAL=true uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-
-# Physical hardware mode (adjust COM3 to your specific port):
-SERIAL_PORT=COM3 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+Simply run the 1-click start script:
+```powershell
+.\start_native.ps1
 ```
+This script will ask for your COM port (default COM6), and then automatically launch both the Backend and Frontend in separate windows. 
+The secure dashboard will be accessible at `http://localhost:5173`.
 
-### 2. Launch the React Dashboard
-
-In a new terminal window, initialize the frontend:
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-The secure dashboard will be accessible at `https://localhost:5173`.
-
-### 3. Containerized Deployment (Docker)
-
-To deploy the entire stack using Docker Compose:
+### 3. Manual Containerized Deployment (Docker Simulation)
+If you do not have hardware connected and just want to run the simulation using Docker Compose:
 
 ```bash
 # macOS/Linux
@@ -128,7 +115,7 @@ To deploy the entire stack using Docker Compose:
 
 > [!WARNING]
 > **Windows/macOS USB Passthrough Constraints**
-> Docker Desktop on these operating systems does not natively support USB serial passthrough. You must either utilize `MOCK_SERIAL=true` or run the `pico_bridge.py` utility natively on your host machine to route the data into Docker via HTTP. See the [Deployment Guide](DEPLOYMENT.md) for details.
+> Docker Desktop on these operating systems does not natively support USB serial passthrough. You must either run the application natively using `.\start_native.ps1`, or utilize `MOCK_SERIAL=true` (which the Docker start scripts default to). See the [Deployment Guide](DEPLOYMENT.md) for details.
 
 ---
 

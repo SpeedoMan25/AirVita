@@ -38,6 +38,7 @@ services:
       - "5173:5173"
     environment:
       - VITE_API_URL=
+      - VITE_PROXY_TARGET=http://backend:8000
     volumes:
       - ./frontend:/app
       - /app/node_modules
