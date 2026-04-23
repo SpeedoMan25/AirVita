@@ -484,6 +484,7 @@ export default function App() {
   const [isScannerOpen, setIsScannerOpen] = useState(false)
   const [isPairingOpen, setIsPairingOpen] = useState(false)
   const [expandedSensorKey, setExpandedSensorKey] = useState(null)
+  const prevActiveSensorKeyRef = useRef('activity_fun')
   
   // Local edit state for room context
   const [isEditingRoomType, setIsEditingRoomType] = useState(false)
@@ -1064,12 +1065,18 @@ export default function App() {
                           }}
                           key={key} 
                           onClick={() => {
-                            setActiveSensorKey(key);
-                            setExpandedSensorKey(isExpanded ? null : key);
+                            if (isExpanded) {
+                              setExpandedSensorKey(null);
+                              setActiveSensorKey(prevActiveSensorKeyRef.current);
+                            } else {
+                              prevActiveSensorKeyRef.current = activeSensorKey;
+                              setActiveSensorKey(key);
+                              setExpandedSensorKey(key);
+                            }
                           }}
                           className={`relative bg-[#09090b] p-4 flex flex-col group overflow-hidden cursor-pointer border border-transparent hover:border-zinc-800 ${
                             isExpanded ? 'col-span-12 md:col-span-8 row-span-2 shadow-2xl z-30 order-first' : 'col-span-4 order-none'
-                          } ${isActive ? 'bg-zinc-900/40' : ''}`}
+                          } ${isActive && !isExpanded ? 'bg-zinc-900/40' : ''}`}
                         >
                           <div className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-500 pointer-events-none" style={{ background: `radial-gradient(circle at top right, ${meta.iconColor}, transparent 70%)` }}></div>
                           {isActive && <div className="absolute top-0 left-0 right-0 h-[1px]" style={{ backgroundColor: meta.iconColor, boxShadow: `0 0 8px ${meta.iconColor}`}}></div>}
