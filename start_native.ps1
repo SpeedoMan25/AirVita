@@ -19,5 +19,5 @@ Write-Host "Launching Frontend..."
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd frontend; npm run dev"
 
 Write-Host ""
-Write-Host "Done! The dashboard will be live at http://localhost:5173 once the servers spin up." -ForegroundColor Green
+Write-Host "Done! The dashboard will be live at https://localhost:5173 once the servers spin up." -ForegroundColor Green
 Write-Host "NOTE: Make sure your Pico is running pico\main.py, not the text dashboard." -ForegroundColor Gray

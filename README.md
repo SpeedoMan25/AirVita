@@ -100,7 +100,7 @@ Simply run the 1-click start script:
 .\start_native.ps1
 ```
 This script will ask for your COM port (default COM6), and then automatically launch both the Backend and Frontend in separate windows. 
-The secure dashboard will be accessible at `http://localhost:5173`.
+The secure dashboard will be accessible at `https://localhost:5173`.
 
 ### 3. Manual Containerized Deployment (Docker Simulation)
 If you do not have hardware connected and just want to run the simulation using Docker Compose:
